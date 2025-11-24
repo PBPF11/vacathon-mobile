@@ -44,13 +44,15 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Dummy login for testing
-      if (username == 'aaa' && password == '123') {
+      // Dummy login for testing - accept common test credentials
+      if ((username == 'aaa' && password == '123') ||
+          (username == 'abc' && password == 'abc') ||
+          (username == 'test' && password == 'test')) {
         _isAuthenticated = true;
         _userProfile = UserProfile(
           id: 1,
-          username: 'aaa',
-          displayName: 'Test Runner',
+          username: username,
+          displayName: '${username.toUpperCase()} Runner',
           bio: 'A passionate runner ready for adventure!',
           city: 'Jakarta',
           country: 'Indonesia',
@@ -61,11 +63,14 @@ class AuthProvider with ChangeNotifier {
           history: [],
           achievements: [],
         );
-        _apiService!.setToken('dummy_token');
+        _apiService!.setToken('dummy_token_${username}');
+        print('[AUTH] Dummy login successful for user: $username');
       } else {
+        // Try real API login
         final response = await _apiService!.login(username, password);
         _isAuthenticated = true;
         await loadProfile();
+        print('[AUTH] Real API login successful for user: $username');
       }
       _errorMessage = null;
     } catch (e) {
