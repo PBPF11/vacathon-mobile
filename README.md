@@ -69,3 +69,116 @@ Josiah (Core & Events): Testing alur navigasi utama, state management (misalnya,
 Fide (Forum): Testing semua alur fitur forum (list, detail, create post, like). Memastikan UI/UX responsif.
 
 Prama (Registrations & Admin): Testing alur "My Registrations" dan semua fitur Admin (Events & Participants). Memastikan hak akses Admin berfungsi.
+
+## Deskripsi Aplikasi
+
+Vacathon adalah aplikasi mobile Flutter yang dirancang khusus untuk para pelari yang ingin berpartisipasi dalam event marathon selama liburan. Aplikasi ini menyediakan platform lengkap yang memungkinkan pengguna untuk menjelajahi event lari, mendaftar partisipasi, berinteraksi dengan komunitas pelari, dan melacak perkembangan serta pencapaian mereka dalam dunia lari marathon.
+
+## Fitur Utama
+
+### Autentikasi
+- Sistem login dengan username dan password
+- Penyimpanan token autentikasi menggunakan shared_preferences
+- Navigasi otomatis berdasarkan status login
+
+### Dashboard
+- Tampilan sambutan personal dengan nama pengguna
+- Kartu profil dengan avatar, bio, dan lokasi
+- Statistik event (total, selesai, mendatang)
+- Informasi event berikutnya
+- Riwayat partisipasi event (upcoming dan completed)
+- Galeri pencapaian (achievements) dengan opsi tambah baru
+
+### Event
+- Daftar event dengan filter canggih:
+  - Pencarian berdasarkan nama
+  - Filter status (upcoming, ongoing, completed)
+  - Filter berdasarkan kota
+  - Filter berdasarkan jarak (5K, 10K, 21K, 42K)
+- Kartu event dengan gambar banner, informasi lokasi, tanggal, kategori
+- Status pendaftaran dan batas peserta
+- Navigasi ke detail event
+
+### Forum
+- Forum terpisah untuk setiap event aktif
+- Tampilan thread dengan judul, preview konten, informasi author
+- Indikator thread pinned
+- Counter view dan waktu aktivitas terakhir
+- Fitur create thread baru dengan dialog
+- Refresh untuk update konten
+
+### Profil & Pengaturan
+- Tampilan profil lengkap dengan statistik
+- Edit profil dan bio
+- Pengaturan akun
+- Logout dengan konfirmasi
+
+### Notifikasi
+- Sistem notifikasi untuk update event dan aktivitas komunitas
+- Mark as read untuk notifikasi
+
+## Teknologi yang Digunakan
+
+### Frontend (Flutter)
+- **State Management**: Provider untuk manajemen state aplikasi
+- **HTTP Client**: Package http untuk komunikasi API
+- **Local Storage**: shared_preferences untuk penyimpanan token dan data lokal
+- **Image Caching**: cached_network_image untuk optimasi loading gambar
+- **UI Enhancement**: google_fonts untuk typography, flutter_animate untuk animasi
+- **Date Formatting**: intl untuk format tanggal
+
+### Backend (Reference - Django)
+- Django REST Framework untuk API endpoints
+- Autentikasi berbasis token JWT
+- Model untuk Event, User Profile, Forum, Registrations, dll.
+
+## Struktur Proyek
+
+```
+vacathon-mobile/
+├── lib/
+│   ├── main.dart                 # Entry point aplikasi
+│   ├── providers/
+│   │   └── auth_provider.dart    # Provider autentikasi
+│   ├── screens/                  # UI screens
+│   │   ├── login_screen.dart
+│   │   ├── home_screen.dart
+│   │   ├── events_screen.dart
+│   │   ├── forum_screen.dart
+│   │   ├── profile_screen.dart
+│   │   └── ...
+│   ├── services/                 # API dan data services
+│   │   ├── api_service.dart
+│   │   └── dummy_data_service.dart
+│   └── models/                   # Data models
+│       └── models.dart
+├── android/                      # Konfigurasi Android
+├── ios/                          # Konfigurasi iOS
+└── reference/                    # Backend Django reference
+```
+
+## Cara Menjalankan Aplikasi
+
+### Persyaratan Sistem
+- Flutter SDK (versi 3.9.2 atau lebih baru)
+- Dart SDK
+- Android Studio atau VS Code dengan ekstensi Flutter
+- Device emulator atau perangkat fisik
+
+## Status Pengembangan
+
+Aplikasi Vacathon sedang dalam tahap pengembangan aktif dengan tim yang terdiri dari beberapa developer. Fitur-fitur utama telah diimplementasi dengan UI/UX yang responsif dan user-friendly. Integrasi dengan backend Django sedang dalam progress sesuai timeline yang tercantum di atas.
+
+### Fitur yang Sudah Diimplementasi
+- ✅ Autentikasi dan navigasi
+- ✅ Dashboard dengan profil dan statistik
+- ✅ Event listing dengan filter
+- ✅ Forum per event
+- ✅ UI responsif untuk mobile
+
+### Fitur Dalam Development
+- 🔄 Detail event screen
+- 🔄 Registration flow
+- 🔄 Real API integration
+- 🔄 Notification system
+- 🔄 Admin dashboard
