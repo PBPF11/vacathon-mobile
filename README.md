@@ -182,3 +182,8 @@ Aplikasi Vacathon sedang dalam tahap pengembangan aktif dengan tim yang terdiri 
 - 🔄 Real API integration
 - 🔄 Notification system
 - 🔄 Admin dashboard
+
+
+## Link Design (Figma)
+link : https://www.figma.com/design/ZaZIvyn6egIUxYP51KN3PM/proyek-akhir-semester?node-id=0-1&p=f&t=O6vDo3EFpWdzeiU7-0
+
