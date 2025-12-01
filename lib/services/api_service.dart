@@ -87,6 +87,18 @@ class ApiService {
     return response;
   }
 
+  Future<Map<String, dynamic>> register(
+    String username,
+    String password,
+  ) async {
+    // Panggil endpoint register di Django
+    final response = await post('/profile/auth/register/', {
+      'username': username,
+      'password': password,
+    });
+    return response;
+  }
+
   Future<void> logout() async {
     final response = await request.logout('$baseUrl/profile/auth/logout/');
     if (response['status'] == false) {
