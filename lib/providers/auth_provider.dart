@@ -1,98 +1,92 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 import '../services/api_service.dart';
 import '../models/models.dart';
 
-/// Authentication provider
 class AuthProvider with ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
   UserProfile? _userProfile;
 
+  // Instance ApiService untuk komunikasi ke backend
+  late ApiService _apiService;
+
+  // Instance CookieRequest dari pbp_django_auth
+  final CookieRequest request;
+
+  // Constructor: Menerima request dari main.dart
+  AuthProvider(this.request) {
+    // Inisialisasi ApiService dengan request yang diberikan
+    _apiService = ApiService(request);
+    _checkLoginStatus();
+  }
+
+  // Getters
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   UserProfile? get userProfile => _userProfile;
 
-  ApiService? _apiService;
-
-  AuthProvider() {
-    _initialize();
-  }
-
-  Future<void> _initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _apiService = ApiService(prefs);
-    final token = prefs.getString('auth_token');
-    if (token != null && token.isNotEmpty) {
-      _isAuthenticated = true;
-      // Try to load profile
+  /// Cek status login saat aplikasi dimulai
+  Future<void> _checkLoginStatus() async {
+    // CookieRequest menyimpan status login (cookies) secara otomatis.
+    // Jika loggedIn bernilai true, kita coba ambil data profil untuk memastikan session valid.
+    if (request.loggedIn) {
       try {
         await loadProfile();
+        _isAuthenticated = true;
       } catch (e) {
-        // Token might be invalid, logout
-        await logout();
+        // Jika gagal ambil profil (misal session expired), anggap belum login
+        _isAuthenticated = false;
       }
+    } else {
+      _isAuthenticated = false;
     }
     notifyListeners();
   }
 
+  /// Fungsi Login
   Future<void> login(String username, String password) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // Dummy login for testing - accept common test credentials
-      if ((username == 'aaa' && password == '123') ||
-          (username == 'abc' && password == 'abc') ||
-          (username == 'test' && password == 'test')) {
+      // Panggil fungsi login dari ApiService
+      final response = await _apiService.login(username, password);
+
+      // Cek status dari response JSON Django
+      if (response['status'] == true) {
         _isAuthenticated = true;
-        _userProfile = UserProfile(
-          id: 1,
-          username: username,
-          displayName: '${username.toUpperCase()} Runner',
-          bio: 'A passionate runner ready for adventure!',
-          city: 'Jakarta',
-          country: 'Indonesia',
-          avatarUrl: null,
-          favoriteDistance: '21K',
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-          history: [],
-          achievements: [],
-        );
-        _apiService!.setToken('dummy_token_${username}');
-        print('[AUTH] Dummy login successful for user: $username');
-      } else {
-        // Try real API login
-        final response = await _apiService!.login(username, password);
-        _isAuthenticated = true;
+        // Setelah login sukses, langsung ambil data profil user
         await loadProfile();
-        print('[AUTH] Real API login successful for user: $username');
+        print('[AUTH] Login success: $username');
+      } else {
+        _isAuthenticated = false;
+        _errorMessage = response['message'] ?? 'Login failed';
       }
-      _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();
       _isAuthenticated = false;
+      print('[AUTH] Login error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  /// Fungsi Logout
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _apiService!.logout();
+      await _apiService.logout();
     } catch (e) {
-      // Ignore logout errors
-      print('Logout error: $e');
+      // Abaikan error saat logout (misal koneksi putus), tetap hapus state lokal
+      print('[AUTH] Logout warning: $e');
     } finally {
-      _apiService!.clearToken();
       _isAuthenticated = false;
       _userProfile = null;
       _isLoading = false;
@@ -100,22 +94,29 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Ambil data profil user dari backend
   Future<void> loadProfile() async {
     try {
-      _userProfile = await _apiService!.getProfile();
+      _userProfile = await _apiService.getProfile();
       notifyListeners();
     } catch (e) {
-      print('Failed to load profile: $e');
-      throw e;
+      print('[AUTH] Failed to load profile: $e');
+      // Jika error loading profile, kemungkinan session habis
+      // Kita set authenticated false agar user diarahkan ke login screen
+      _isAuthenticated = false;
+      _userProfile = null;
+      notifyListeners();
+      // Opsional: throw e; jika ingin menangani error di UI
     }
   }
 
+  /// Update profil user
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
     try {
-      _userProfile = await _apiService!.updateProfile(profileData);
+      _userProfile = await _apiService.updateProfile(profileData);
       notifyListeners();
     } catch (e) {
-      print('Failed to update profile: $e');
+      print('[AUTH] Failed to update profile: $e');
       throw e;
     }
   }
