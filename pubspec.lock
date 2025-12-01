@@ -328,6 +328,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  pbp_django_auth:
+    dependency: "direct main"
+    description:
+      name: pbp_django_auth
+      sha256: "9d88584e30f66f8d2f4031092e439e183e59208cef5a876625829729524594ba"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
   platform:
     dependency: transitive
     description:
