@@ -76,6 +76,36 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Fungsi Register
+  Future<bool> register(String username, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.register(username, password);
+
+      if (response['status'] == true) {
+        // Register sukses!
+        // Opsional: Bisa langsung login otomatis atau minta user login manual.
+        // Di sini kita return true agar UI tahu proses sukses.
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = response['message'] ?? 'Registration failed';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Fungsi Logout
   Future<void> logout() async {
     _isLoading = true;

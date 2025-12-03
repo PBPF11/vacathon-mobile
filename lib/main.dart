@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:vacathon_mobile/screens/register_screen.dart';
 import 'providers/auth_provider.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'screens/login_screen.dart';
@@ -109,6 +110,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const AuthWrapper(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/register': (context) => const RegisterScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );
