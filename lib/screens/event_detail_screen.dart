@@ -27,12 +27,18 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   late TabController _tabController;
   EventDetail? _eventDetail;
   bool _isLoadingDetail = true;
+  ApiService? _apiService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadEventDetail();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadEventDetail();
   }
 
   Future<void> _loadEventDetail() async {

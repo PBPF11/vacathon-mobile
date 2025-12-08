@@ -51,6 +51,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Fungsi Login
   Future<void> login(String username, String password) async {
+    _apiService ??= await ApiService.instance();
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -111,6 +112,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Fungsi Logout
   Future<void> logout() async {
+    _apiService ??= await ApiService.instance();
     _isLoading = true;
     notifyListeners();
 
@@ -129,6 +131,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Ambil data profil user dari backend
   Future<void> loadProfile() async {
+    _apiService ??= await ApiService.instance();
     try {
       _userProfile = await _apiService.getProfile();
       notifyListeners();
@@ -145,6 +148,7 @@ class AuthProvider with ChangeNotifier {
 
   /// Update profil user
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
+    _apiService ??= await ApiService.instance();
     try {
       _userProfile = await _apiService.updateProfile(profileData);
       notifyListeners();

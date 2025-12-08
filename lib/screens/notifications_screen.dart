@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart' as models;
+import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 
 // CSS Variables from reference
@@ -21,11 +22,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   models.NotificationsResponse? _notificationsResponse;
   bool _isLoading = true;
   bool _showUnreadOnly = false;
+  ApiService? _apiService;
 
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadNotifications();
   }
 
   Future<void> _loadNotifications() async {
@@ -34,9 +41,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
-      _notificationsResponse = await DummyDataService.getNotifications(
-        unreadOnly: _showUnreadOnly,
-      );
+      _notificationsResponse = await (DummyDataService.USE_DUMMY_DATA
+          ? DummyDataService.getNotifications(unreadOnly: _showUnreadOnly)
+          : _apiService!.getNotifications(unreadOnly: _showUnreadOnly));
     } catch (e) {
       print('[ERROR] Failed to load notifications: $e');
     } finally {
@@ -48,15 +55,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(int notificationId) async {
     print('[ACTION] Mark notification as read: $notificationId');
-    // In real implementation, this would call API
-    // For now, just reload data to simulate the change
+    if (!DummyDataService.USE_DUMMY_DATA) {
+      await _apiService!.markNotificationRead(notificationId);
+    }
     await _loadNotifications();
   }
 
   Future<void> _markAllAsRead() async {
     print('[ACTION] Mark all notifications as read');
-    // In real implementation, this would call API
-    // For now, just reload data to simulate the change
+    if (!DummyDataService.USE_DUMMY_DATA) {
+      await _apiService!.markAllNotificationsRead();
+    }
     await _loadNotifications();
   }
 

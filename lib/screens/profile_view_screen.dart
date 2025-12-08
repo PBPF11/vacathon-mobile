@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 
 // CSS Variables from reference
@@ -24,19 +25,38 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
   UserProfile? _profile;
   List<RunnerAchievement> _achievements = [];
   bool _isLoading = true;
+  ApiService? _apiService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    _loadProfileData();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadProfileData();
   }
 
   Future<void> _loadProfileData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    if (authProvider.userProfile != null) {
-      _profile = authProvider.userProfile!;
-      _achievements = await DummyDataService.getAchievements();
+    if (!authProvider.isAuthenticated) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      await authProvider.loadProfile();
+      _profile = authProvider.userProfile;
+      _achievements = await (DummyDataService.USE_DUMMY_DATA
+          ? DummyDataService.getAchievements()
+          : _apiService!.getAchievements());
+    } catch (e) {
+      print('[ERROR] Failed to load profile: $e');
+    } finally {
       setState(() {
         _isLoading = false;
       });
