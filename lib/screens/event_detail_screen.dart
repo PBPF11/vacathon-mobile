@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/dummy_data_service.dart';
 import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -20,7 +22,8 @@ class EventDetailScreen extends StatefulWidget {
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
-class _EventDetailScreenState extends State<EventDetailScreen> with TickerProviderStateMixin {
+class _EventDetailScreenState extends State<EventDetailScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   EventDetail? _eventDetail;
   bool _isLoadingDetail = true;
@@ -44,18 +47,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
     });
 
     try {
-      // Load event detail data (schedules, aid stations, etc.)
-      if (DummyDataService.USE_DUMMY_DATA) {
-        _eventDetail = await DummyDataService.getEventDetail(widget.event.id);
-      } else {
-        _eventDetail = await _apiService?.getEventDetail(widget.event.id);
-      }
+      // GUNAKAN REAL API
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      // Gunakan SLUG, bukan ID
+      _eventDetail = await authProvider.apiService.getEventDetail(
+        widget.event.slug,
+      );
     } catch (e) {
       print('[ERROR] Failed to load event detail: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gagal memuat detail: $e')));
+      }
     } finally {
-      setState(() {
-        _isLoadingDetail = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingDetail = false;
+        });
+      }
     }
   }
 
@@ -80,10 +90,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
                 ),
               ),
               background: widget.event.bannerImage != null
-                  ? Image.network(
-                      widget.event.bannerImage!,
-                      fit: BoxFit.cover,
-                    )
+                  ? Image.network(widget.event.bannerImage!, fit: BoxFit.cover)
                   : Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -93,11 +100,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
                         ),
                       ),
                       child: const Center(
-                        child: Icon(
-                          Icons.event,
-                          size: 80,
-                          color: Colors.white,
-                        ),
+                        child: Icon(Icons.event, size: 80, color: Colors.white),
                       ),
                     ),
             ),
@@ -107,7 +110,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
                 onPressed: () {
                   print('[ACTION] Share event: ${widget.event.id}');
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Share functionality coming soon')),
+                    const SnackBar(
+                      content: Text('Share functionality coming soon'),
+                    ),
                   );
                 },
               ),
@@ -174,9 +179,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
   Widget _buildEventInfoCard() {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -187,9 +190,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(widget.event.status).withOpacity(0.2),
+                    color: _getStatusColor(
+                      widget.event.status,
+                    ).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -246,7 +254,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               ],
             ),
 
-            if (widget.event.venue != null && widget.event.venue!.isNotEmpty) ...[
+            if (widget.event.venue != null &&
+                widget.event.venue!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -294,7 +303,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               runSpacing: 8,
               children: widget.event.categories.map((category) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -329,9 +341,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatItem('Distance', '${widget.event.categories.firstOrNull?.distanceKm ?? 0} KM'),
-                  _buildStatItem('Duration', widget.event.durationDays != null ? '${widget.event.durationDays} days' : '1 day'),
-                  _buildStatItem('Popularity', widget.event.popularityScore.toString()),
+                  _buildStatItem(
+                    'Distance',
+                    '${widget.event.categories.firstOrNull?.distanceKm ?? 0} KM',
+                  ),
+                  _buildStatItem(
+                    'Duration',
+                    widget.event.durationDays != null
+                        ? '${widget.event.durationDays} days'
+                        : '1 day',
+                  ),
+                  _buildStatItem(
+                    'Popularity',
+                    widget.event.popularityScore.toString(),
+                  ),
                 ],
               ),
             ),
@@ -356,10 +379,25 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  _buildInfoRow('Registration Opens', widget.event.registrationOpenDate?.toString().split(' ')[0] ?? 'TBD'),
-                  _buildInfoRow('Registration Deadline', widget.event.registrationDeadline.toString().split(' ')[0]),
-                  _buildInfoRow('Participant Limit', widget.event.participantLimit.toString()),
-                  _buildInfoRow('Current Registrations', widget.event.registeredCount.toString()),
+                  _buildInfoRow(
+                    'Registration Opens',
+                    widget.event.registrationOpenDate?.toString().split(
+                          ' ',
+                        )[0] ??
+                        'TBD',
+                  ),
+                  _buildInfoRow(
+                    'Registration Deadline',
+                    widget.event.registrationDeadline.toString().split(' ')[0],
+                  ),
+                  _buildInfoRow(
+                    'Participant Limit',
+                    widget.event.participantLimit.toString(),
+                  ),
+                  _buildInfoRow(
+                    'Current Registrations',
+                    widget.event.registeredCount.toString(),
+                  ),
                 ],
               ),
             ),
@@ -377,9 +415,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
     final schedules = _eventDetail?.schedules ?? [];
 
     return schedules.isEmpty
-        ? const Center(
-            child: Text('No schedule information available'),
-          )
+        ? const Center(child: Text('No schedule information available'))
         : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: schedules.length,
@@ -411,7 +447,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
                     schedule.title,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  subtitle: schedule.description != null && schedule.description!.isNotEmpty
+                  subtitle:
+                      schedule.description != null &&
+                          schedule.description!.isNotEmpty
                       ? Text(schedule.description!)
                       : null,
                 ),
@@ -444,28 +482,36 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-            ...aidStations.map((station) => Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: station.isMedical ? Colors.red.withOpacity(0.2) : accentColor.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+            ...aidStations.map(
+              (station) => Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: station.isMedical
+                          ? Colors.red.withOpacity(0.2)
+                          : accentColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      station.isMedical
+                          ? Icons.local_hospital
+                          : Icons.restaurant,
+                      color: station.isMedical ? Colors.red : darkColor,
+                    ),
                   ),
-                  child: Icon(
-                    station.isMedical ? Icons.local_hospital : Icons.restaurant,
-                    color: station.isMedical ? Colors.red : darkColor,
+                  title: Text(station.name),
+                  subtitle: Text(
+                    '${station.kilometerMarker} KM - ${station.supplies}',
                   ),
+                  trailing: station.isMedical
+                      ? const Icon(Icons.local_hospital, color: Colors.red)
+                      : null,
                 ),
-                title: Text(station.name),
-                subtitle: Text('${station.kilometerMarker} KM - ${station.supplies}'),
-                trailing: station.isMedical
-                    ? const Icon(Icons.local_hospital, color: Colors.red)
-                    : null,
               ),
-            )),
+            ),
             const SizedBox(height: 24),
           ],
 
@@ -480,54 +526,56 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
               ),
             ),
             const SizedBox(height: 16),
-            ...routeSegments.map((segment) => Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Segment ${segment.order}: ${segment.title}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+            ...routeSegments.map(
+              (segment) => Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Segment ${segment.order}: ${segment.title}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
+                          Text(
+                            '${segment.distanceKm} KM',
+                            style: TextStyle(
+                              color: textColor.withOpacity(0.6),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (segment.elevationGain > 0) ...[
+                        const SizedBox(height: 8),
                         Text(
-                          '${segment.distanceKm} KM',
+                          'Elevation Gain: ${segment.elevationGain}m',
                           style: TextStyle(
                             color: textColor.withOpacity(0.6),
-                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
                           ),
                         ),
                       ],
-                    ),
-                    if (segment.elevationGain > 0) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Text(
-                        'Elevation Gain: ${segment.elevationGain}m',
+                        segment.description,
                         style: TextStyle(
-                          color: textColor.withOpacity(0.6),
-                          fontSize: 14,
+                          color: textColor.withOpacity(0.8),
+                          height: 1.5,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    Text(
-                      segment.description,
-                      style: TextStyle(
-                        color: textColor.withOpacity(0.8),
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            )),
+            ),
           ],
         ],
       ),
@@ -542,9 +590,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
     final documents = _eventDetail?.documents ?? [];
 
     return documents.isEmpty
-        ? const Center(
-            child: Text('No resources available'),
-          )
+        ? const Center(child: Text('No resources available'))
         : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: documents.length,
@@ -560,19 +606,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
                       color: primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(
-                      Icons.description,
-                      color: primaryColor,
-                    ),
+                    child: const Icon(Icons.description, color: primaryColor),
                   ),
                   title: Text(document.title),
-                  subtitle: Text('${document.documentTypeDisplay} • ${document.uploadedBy}'),
+                  subtitle: Text(
+                    '${document.documentTypeDisplay} • ${document.uploadedBy}',
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.download),
                     onPressed: () {
-                      print('[ACTION] Download document: ${document.documentUrl}');
+                      print(
+                        '[ACTION] Download document: ${document.documentUrl}',
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Download functionality coming soon')),
+                        const SnackBar(
+                          content: Text('Download functionality coming soon'),
+                        ),
                       );
                     },
                   ),
@@ -616,18 +665,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: textColor.withOpacity(0.7),
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          Text(label, style: TextStyle(color: textColor.withOpacity(0.7))),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -728,34 +767,42 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
       } else {
         if (_distanceLabelController.text.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please specify your target distance')),
+            const SnackBar(
+              content: Text('Please specify your target distance'),
+            ),
           );
           setState(() {
             _isSubmitting = false;
           });
           return;
         }
-        registrationData['distance_label'] = _distanceLabelController.text.trim();
+        registrationData['distance_label'] = _distanceLabelController.text
+            .trim();
       }
 
-      print('[ACTION] Submit registration for event ${widget.event.id}: $registrationData');
+      print(
+        '[ACTION] Submit registration for event ${widget.event.id}: $registrationData',
+      );
 
-      EventRegistration registration;
-      if (DummyDataService.USE_DUMMY_DATA) {
-        registration = await DummyDataService.registerForEvent(widget.event.id, registrationData);
-      } else {
-        registration = await _apiService!.registerForEvent(
-          widget.event.id,
-          _selectedCategoryId,
-          registrationData,
-        );
-      }
+      // AKSES API LEWAT PROVIDER
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      // PANGGIL API REGISTER
+      // Pastikan method registerForEvent di ApiService sudah diupdate menerima (String slug, int catId, map data)
+      final registration = await authProvider.apiService.registerForEvent(
+        widget.event.slug, // Gunakan Slug
+        _selectedCategoryId ??
+            0, // Kirim ID Kategori (pastikan handle null/jarak manual jika perlu)
+        registrationData,
+      );
 
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Successfully registered for ${widget.event.title}! Reference: ${registration.referenceCode}'),
+            content: Text(
+              'Successfully registered! Ref: ${registration.referenceCode}',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -782,9 +829,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 500),
         child: SingleChildScrollView(
@@ -805,10 +850,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                         color: primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
-                        Icons.assignment,
-                        color: primaryColor,
-                      ),
+                      child: const Icon(Icons.assignment, color: primaryColor),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -857,7 +899,10 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     items: widget.event.categories.map((category) {
                       return DropdownMenuItem<int>(
@@ -896,7 +941,10 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                       ),
                       filled: true,
                       fillColor: Colors.grey[50],
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -930,7 +978,10 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                     ),
                     filled: true,
                     fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   keyboardType: TextInputType.phone,
                   validator: (value) {
@@ -964,7 +1015,10 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                     ),
                     filled: true,
                     fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -986,7 +1040,10 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                     ),
                     filled: true,
                     fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   keyboardType: TextInputType.phone,
                   validator: (value) {
@@ -1012,13 +1069,17 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                 TextFormField(
                   controller: _medicalNotesController,
                   decoration: InputDecoration(
-                    hintText: 'Any medical conditions, allergies, or medications we should be aware of...',
+                    hintText:
+                        'Any medical conditions, allergies, or medications we should be aware of...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                     filled: true,
                     fillColor: Colors.grey[50],
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                   maxLines: 3,
                 ),
@@ -1056,7 +1117,9 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                        onPressed: _isSubmitting
+                            ? null
+                            : () => Navigator.of(context).pop(),
                         style: TextButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
@@ -1085,14 +1148,14 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                                 height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text(
                                 'Register',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                       ),
                     ),
@@ -1118,11 +1181,12 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Colors.white,
-      child: _tabBar,
-    );
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(color: Colors.white, child: _tabBar);
   }
 
   @override
