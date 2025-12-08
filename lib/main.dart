@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:vacathon_mobile/screens/register_screen.dart';
 import 'providers/auth_provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/events_screen.dart';
@@ -17,7 +19,22 @@ void main() {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        // 1. Provider CookieRequest (Root untuk auth)
+        Provider(
+          create: (_) {
+            CookieRequest request = CookieRequest();
+            return request;
+          },
+        ),
+        // 2. AuthProvider sekarang bergantung pada CookieRequest
+        // Kita gunakan ChangeNotifierProxyProvider untuk menyuntikkan request ke AuthProvider
+        ChangeNotifierProxyProvider<CookieRequest, AuthProvider>(
+          // Gunakan CookieRequest() kosong sebagai inisial, JANGAN null
+          create: (_) => AuthProvider(CookieRequest()),
+
+          // Saat request yang asli dari Provider tersedia, update AuthProvider
+          update: (_, request, authProvider) => AuthProvider(request),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -69,9 +86,7 @@ class MyApp extends StatelessWidget {
           color: Colors.white,
         ),
         inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: Colors.white,
           focusedBorder: OutlineInputBorder(
@@ -95,6 +110,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const AuthWrapper(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
+        '/register': (context) => const RegisterScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );
@@ -132,11 +148,7 @@ class PlaceholderScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.construction,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.construction, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               '$title Screen',
@@ -145,9 +157,9 @@ class PlaceholderScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Coming Soon...',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey[600],
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
             ),
           ],
         ),
