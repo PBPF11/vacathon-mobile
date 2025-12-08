@@ -9,7 +9,7 @@ class ApiService {
   // Android Emulator: 'http://10.0.2.2:8000'
   // iOS Simulator / Web: 'http://localhost:8000'
   // HP Fisik: Pakai IP Laptop (misal 'http://192.168.1.xxx:8000')
-  static const String baseUrl = 'http://10.0.2.2:8000';
+  static const String baseUrl = 'http://localhost:8000';
 
   // Instance CookieRequest disuntikkan dari AuthProvider
   final CookieRequest request;
