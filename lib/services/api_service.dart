@@ -119,7 +119,7 @@ class ApiService {
     // Sesuaikan endpoint ini dengan urls.py Anda (misal: /profile/api/events/)
     // Jika belum ada di backend, kode ini akan error 404 sampai Anda buat view-nya.
     final query = {'page': page.toString(), ...?filters};
-    final data = await get('/profile/api/events/', queryParams: query);
+    final data = await get('/events/api/', queryParams: query);
     return EventsResponse.fromJson(data);
   }
 
@@ -127,15 +127,25 @@ class ApiService {
     if (DummyDataService.USE_DUMMY_DATA) {
       return DummyDataService.getEvent(id);
     }
-    final data = await get('/profile/api/events/$id/');
-    return Event.fromJson(data);
+    // Catatan: Endpoint ini mungkin perlu disesuaikan jika backend tidak menyediakan single fetch by ID.
+    // Namun endpoint detail event menggunakan SLUG, bukan ID.
+    throw UnimplementedError(
+      "Backend uses slugs for details. Use getEventDetailBySlug instead.",
+    );
   }
 
-  Future<EventDetail> getEventDetail(int eventId) async {
+  // PERBAIKAN PENTING: Backend event_detail menggunakan SLUG, bukan Integer ID.
+  // Lihat event_detail/urls.py -> path("events/<slug:slug>/api/", ...)
+  // Anda perlu mengubah parameter dari int eventId menjadi String slug.
+  Future<EventDetail> getEventDetail(String slug) async {
     if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getEventDetail(eventId);
+      // Dummy data service masih pakai ID, ini mungkin error jika tidak disesuaikan
+      // return DummyDataService.getEventDetail(int.parse(slug));
+      throw UnimplementedError("Dummy data uses INT, Backend uses SLUG.");
     }
-    final data = await get('/profile/api/events/$eventId/detail/');
+
+    // URL: /event-detail/events/<slug>/api/
+    final data = await get('/event-detail/events/$slug/api/');
     return EventDetail.fromJson(data);
   }
 
@@ -151,11 +161,16 @@ class ApiService {
   }
 
   Future<UserProfile> updateProfile(Map<String, dynamic> profileData) async {
-    final data = await post(
-      '/profile/api/profile/update/',
-      profileData,
-    ); // Sesuaikan endpoint
-    return UserProfile.fromJson(data);
+    // Endpoint yang baru kita buat di backend
+    final response = await post('/profile/api/profile/update/', profileData);
+
+    if (response['status'] == true) {
+      // Jika backend mengembalikan objek 'profile' terbaru, gunakan itu.
+      // Jika tidak, kita bisa fetch ulang.
+      return getProfile();
+    } else {
+      throw Exception(response['message'] ?? "Gagal update profil");
+    }
   }
 
   Future<List<RunnerAchievement>> getAchievements() async {
@@ -190,7 +205,7 @@ class ApiService {
       return DummyDataService.getThreads(eventId, page: page);
     }
     final data = await get(
-      '/profile/api/forum/threads/',
+      '/forum/api/threads/',
       queryParams: {'event': eventId.toString(), 'page': page.toString()},
     );
     return ThreadsResponse.fromJson(data);
@@ -201,36 +216,87 @@ class ApiService {
     String title,
     String body,
   ) async {
-    final data = await post('/profile/api/forum/threads/', {
+    // Endpoint yang baru kita buat di backend
+    final response = await post('/forum/api/threads/create/', {
       'event': eventId,
       'title': title,
       'body': body,
     });
-    return ForumThread.fromJson(data);
+
+    if (response['status'] == true) {
+      // Karena backend mungkin belum mengembalikan full object yang dibutuhkan fromJson,
+      // kita bisa return object manual atau fetch ulang.
+      // Untuk amannya, kita return dummy object yang valid agar UI tidak crash,
+      // lalu nanti UI akan refresh list thread.
+      return ForumThread(
+        id: response['id'],
+        eventId: eventId,
+        authorId: 0, // Placeholder
+        authorUsername: "Me",
+        title: title,
+        slug: response['slug'],
+        body: body,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        lastActivityAt: DateTime.now(),
+        isPinned: false,
+        isLocked: false,
+        viewCount: 0,
+      );
+    } else {
+      throw Exception(response['message'] ?? "Gagal membuat thread");
+    }
   }
 
-  Future<PostsResponse> getPosts(int threadId, {int page = 1}) async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getPosts(threadId, page: page);
-    }
+  Future<PostsResponse> getPosts(String threadSlug, {int page = 1}) async {
+    // Endpoint: /forum/api/threads/<slug>/posts/
     final data = await get(
-      '/profile/api/forum/threads/$threadId/posts/',
+      '/forum/api/threads/$threadSlug/posts/',
       queryParams: {'page': page.toString()},
     );
     return PostsResponse.fromJson(data);
   }
 
+  // Pastikan parameter pertama adalah String threadSlug, BUKAN int threadId
   Future<ForumPost> createPost(
-    int threadId,
+    String threadSlug,
     String content, {
     int? parentId,
   }) async {
-    final data = await post('/profile/api/forum/posts/', {
-      'thread': threadId,
-      'content': content,
-      if (parentId != null) 'parent': parentId,
-    });
-    return ForumPost.fromJson(data);
+    // URL Backend: threads/<slug:slug>/posts/
+    // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
+    final url = '/forum/threads/$threadSlug/posts/';
+
+    final body = {'content': content, if (parentId != null) 'parent': parentId};
+
+    // Backend create_post di Django menggunakan form-data standard (request.POST)
+    // Tapi pbp_django_auth .postJson mengirim JSON.
+    // Anda mungkin perlu memodifikasi view create_post di backend agar menerima JSON,
+    // ATAU gunakan request.post (bukan postJson) di sini jika library mendukung multipart/form-data.
+
+    // SOLUSI TERBAIK (Ubah Backend Sedikit):
+    // Buka vacathon-be/forum/views.py > create_post
+    // Tambahkan logic untuk membaca json.loads(request.body) jika request.POST kosong.
+
+    final response = await request.postJson('$baseUrl$url', jsonEncode(body));
+
+    if (response['success'] == true) {
+      // Backend mengembalikan HTML untuk partial render, bukan JSON object post lengkap.
+      // Kita harus return object dummy agar Flutter tidak error.
+      return ForumPost(
+        id: response['post_id'],
+        threadId: 0,
+        authorId: 0,
+        authorUsername: "Me",
+        content: content,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        likesCount: 0,
+        isLikedByUser: false,
+      );
+    } else {
+      throw Exception("Gagal mengirim balasan");
+    }
   }
 
   Future<void> likePost(int postId) async {
@@ -244,23 +310,80 @@ class ApiService {
       return DummyDataService.getMyRegistrations(page: page);
     }
     final data = await get(
-      '/profile/api/registrations/',
+      '/register/account/registrations/api/',
       queryParams: {'page': page.toString()},
     );
     return RegistrationsResponse.fromJson(data);
   }
 
+  // UBAH signature method ini
   Future<EventRegistration> registerForEvent(
-    int eventId,
+    String eventSlug, // GANTI int eventId menjadi String eventSlug
     int categoryId,
     Map<String, dynamic> registrationData,
   ) async {
-    final data = await post('/profile/api/registrations/', {
-      'event': eventId,
-      'category': categoryId,
+    // Sesuaikan URL dengan backend: vacathon-be/registrations/urls.py
+    // path("events/<slug:slug>/register/ajax/", register_ajax, name="register-ajax")
+    // URL penuh: /register/events/<slug>/register/ajax/
+
+    // Perhatikan: registrations/urls.py di-include dengan prefix 'register/' di vacathon/urls.py
+    final url = '/register/events/$eventSlug/register/ajax/';
+
+    // Sesuaikan body request (backend mengharapkan form-data standard, tapi pbp_django_auth biasanya handle json)
+    // Backend 'register_ajax' membaca request.POST.
+    // Kita kirim sebagai map biasa, library akan handle.
+
+    final data = {
+      'category': categoryId.toString(), // Backend form expect string ID
       ...registrationData,
-    });
-    return EventRegistration.fromJson(data);
+    };
+
+    final response = await post(url, data);
+
+    // Backend register_ajax mengembalikan {success: true, registration_url: ...}
+    // Backend BELUM mengembalikan objek EventRegistration lengkap dalam JSON response.
+    // Untuk solusi cepat "Fullstack", kita kembalikan object dummy atau fetch ulang.
+    // Tapi idealnya, backend harusnya return data registrasi.
+
+    if (response['success'] == true) {
+      // Kita return fetch ulang registration terbaru user (opsional)
+      // Atau return object sementara agar UI tidak error
+      return EventRegistration(
+        id: "temp",
+        referenceCode: "PENDING",
+        userId: 0,
+        userUsername: "",
+        event: Event(
+          id: 0,
+          title: "",
+          slug: eventSlug,
+          description: "",
+          city: "",
+          country: "",
+          startDate: DateTime.now(),
+          registrationDeadline: DateTime.now(),
+          status: "",
+          popularityScore: 0,
+          participantLimit: 0,
+          registeredCount: 0,
+          featured: false,
+          categories: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        distanceLabel: "",
+        phoneNumber: "",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+        status: "pending",
+        paymentStatus: "unpaid",
+        formPayload: {},
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    } else {
+      throw Exception(response['errors'] ?? "Registration failed");
+    }
   }
 
   Future<EventRegistration> getRegistration(String referenceCode) async {
@@ -282,7 +405,7 @@ class ApiService {
     }
     final query = {'page': page.toString()};
     if (unreadOnly) query['unread'] = 'true';
-    final data = await get('/profile/api/notifications/', queryParams: query);
+    final data = await get('/notifications/api/', queryParams: query);
     return NotificationsResponse.fromJson(data);
   }
 
