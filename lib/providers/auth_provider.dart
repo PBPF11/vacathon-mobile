@@ -23,7 +23,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> _initialize() async {
     final prefs = await SharedPreferences.getInstance();
-    _apiService = ApiService(prefs);
+    _apiService = await ApiService.instance();
     final token = prefs.getString('auth_token');
     if (token != null && token.isNotEmpty) {
       _isAuthenticated = true;
@@ -39,6 +39,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> login(String username, String password) async {
+    _apiService ??= await ApiService.instance();
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -83,6 +84,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _apiService ??= await ApiService.instance();
     _isLoading = true;
     notifyListeners();
 
@@ -101,6 +103,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> loadProfile() async {
+    _apiService ??= await ApiService.instance();
     try {
       _userProfile = await _apiService!.getProfile();
       notifyListeners();
@@ -111,6 +114,7 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
+    _apiService ??= await ApiService.instance();
     try {
       _userProfile = await _apiService!.updateProfile(profileData);
       notifyListeners();

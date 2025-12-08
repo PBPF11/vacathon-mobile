@@ -4,7 +4,8 @@ import '../models/models.dart';
 /// EASY TO REMOVE: Replace all method calls with real API calls
 /// All dummy data is contained here for easy replacement
 class DummyDataService {
-  static const bool USE_DUMMY_DATA = true; // Set to false to use real API
+  // Toggle via --dart-define=USE_DUMMY_DATA=true when you need offline fixtures.
+  static const bool USE_DUMMY_DATA = bool.fromEnvironment('USE_DUMMY_DATA', defaultValue: false);
 
   // Dummy Events Data
   static final List<Event> _dummyEvents = [

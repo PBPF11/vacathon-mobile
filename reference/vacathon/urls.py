@@ -37,7 +37,8 @@ urlpatterns = [
     path('api/events/', include('events.api_urls')),
     path('api/forum/', include('forum.api_urls')),
     path('api/profile/', include('profiles.api_urls')),
-    path('api/register/', include('registrations.api_urls')),
+    path('api/register/', include('registrations.api_urls')),  # legacy prefix
+    path('api/registrations/', include('registrations.api_urls')),  # mobile-friendly prefix
     path('api/notifications/', include('notifications.api_urls')),
     # ======================================================
 ]

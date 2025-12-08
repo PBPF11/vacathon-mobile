@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
@@ -6,7 +8,8 @@ import 'dummy_data_service.dart';
 
 /// API Service for backend integration
 class ApiService {
-  static const String baseUrl = 'http://localhost:8000'; // Change this to your backend URL
+  // Resolve base URL for different environments (Android emulator, iOS, web/desktop).
+  static final String baseUrl = _resolveBaseUrl();
   static const String apiPrefix = '/api';
 
   // Auth token
@@ -15,6 +18,15 @@ class ApiService {
 
   ApiService(this._prefs) {
     _token = _prefs.getString('auth_token');
+  }
+
+  /// Shared instance so screens/providers reuse the same token/cache.
+  static ApiService? _shared;
+  static Future<ApiService> instance() async {
+    if (_shared != null) return _shared!;
+    final prefs = await SharedPreferences.getInstance();
+    _shared = ApiService(prefs);
+    return _shared!;
   }
 
   /// Set auth token
@@ -32,6 +44,7 @@ class ApiService {
   /// Get headers with auth
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     if (_token != null) 'Authorization': 'Token $_token',
   };
 
@@ -42,6 +55,17 @@ class ApiService {
     } else {
       throw ApiException(response.statusCode, response.body);
     }
+  }
+
+  static String _resolveBaseUrl() {
+    const envBase = String.fromEnvironment('API_BASE_URL');
+    if (envBase.isNotEmpty) return envBase;
+
+    // Android emulator needs to hit the host machine via 10.0.2.2
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8000';
+    }
+    return 'http://localhost:8000';
   }
 
   /// GET request
@@ -211,12 +235,15 @@ class ApiService {
     return RegistrationsResponse.fromJson(data);
   }
 
-  Future<EventRegistration> registerForEvent(int eventId, int categoryId, Map<String, dynamic> registrationData) async {
-    final data = await post('/registrations/', body: {
+  Future<EventRegistration> registerForEvent(int eventId, int? categoryId, Map<String, dynamic> registrationData) async {
+    final payload = {
       'event': eventId,
-      'category': categoryId,
       ...registrationData,
-    });
+    };
+    if (categoryId != null && categoryId > 0) {
+      payload['category'] = categoryId;
+    }
+    final data = await post('/registrations/', body: payload);
     return EventRegistration.fromJson(data);
   }
 

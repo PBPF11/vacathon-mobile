@@ -24,12 +24,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
   late TabController _tabController;
   EventDetail? _eventDetail;
   bool _isLoadingDetail = true;
+  ApiService? _apiService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadEventDetail();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadEventDetail();
   }
 
   Future<void> _loadEventDetail() async {
@@ -39,7 +45,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> with TickerProvid
 
     try {
       // Load event detail data (schedules, aid stations, etc.)
-      _eventDetail = await DummyDataService.getEventDetail(widget.event.id);
+      if (DummyDataService.USE_DUMMY_DATA) {
+        _eventDetail = await DummyDataService.getEventDetail(widget.event.id);
+      } else {
+        _eventDetail = await _apiService?.getEventDetail(widget.event.id);
+      }
     } catch (e) {
       print('[ERROR] Failed to load event detail: $e');
     } finally {
@@ -730,8 +740,16 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
 
       print('[ACTION] Submit registration for event ${widget.event.id}: $registrationData');
 
-      // Call dummy data service to register
-      final registration = await DummyDataService.registerForEvent(widget.event.id, registrationData);
+      EventRegistration registration;
+      if (DummyDataService.USE_DUMMY_DATA) {
+        registration = await DummyDataService.registerForEvent(widget.event.id, registrationData);
+      } else {
+        registration = await _apiService!.registerForEvent(
+          widget.event.id,
+          _selectedCategoryId,
+          registrationData,
+        );
+      }
 
       if (mounted) {
         Navigator.of(context).pop();

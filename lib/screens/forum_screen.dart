@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 
 // CSS Variables from reference
@@ -18,23 +19,33 @@ class ForumScreen extends StatefulWidget {
 }
 
 class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin {
-  late TabController _tabController;
+  TabController? _tabController;
   List<Event> _events = [];
   Map<int, ThreadsResponse> _threadsCache = {};
   bool _isLoading = true;
+  ApiService? _apiService;
 
   @override
   void initState() {
     super.initState();
-    _loadEvents();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadEvents();
   }
 
   Future<void> _loadEvents() async {
     try {
-      final eventsResponse = await DummyDataService.getEvents();
+      final eventsResponse = DummyDataService.USE_DUMMY_DATA
+          ? await DummyDataService.getEvents()
+          : await _apiService!.getEvents();
       setState(() {
         _events = eventsResponse.events.where((event) => event.status != 'completed').toList();
-        _tabController = TabController(length: _events.length, vsync: this);
+        if (_events.isNotEmpty) {
+          _tabController = TabController(length: _events.length, vsync: this);
+        }
         _isLoading = false;
       });
 
@@ -54,7 +65,9 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
     if (_threadsCache.containsKey(eventId)) return;
 
     try {
-      final threadsResponse = await DummyDataService.getThreads(eventId);
+      final threadsResponse = DummyDataService.USE_DUMMY_DATA
+          ? await DummyDataService.getThreads(eventId)
+          : await _apiService!.getThreads(eventId);
       setState(() {
         _threadsCache[eventId] = threadsResponse;
       });
@@ -101,7 +114,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
         backgroundColor: primaryColor,
         elevation: 0,
         bottom: TabBar(
-          controller: _tabController,
+          controller: _tabController!,
           isScrollable: true,
           tabs: _events.map((event) => Tab(text: event.title)).toList(),
           labelColor: whiteColor,
@@ -114,7 +127,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
         ),
       ),
       body: TabBarView(
-        controller: _tabController,
+        controller: _tabController!,
         children: _events.map((event) => _buildForumTab(event)).toList(),
       ),
       floatingActionButton: FloatingActionButton(
@@ -354,11 +367,8 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
             onPressed: () {
               if (titleController.text.trim().isNotEmpty &&
                   bodyController.text.trim().isNotEmpty) {
-                print('[ACTION] Create thread: ${titleController.text}');
+                _submitThread(titleController.text.trim(), bodyController.text.trim());
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Thread created successfully!')),
-                );
               }
             },
             style: ElevatedButton.styleFrom(
@@ -369,6 +379,32 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
         ],
       ),
     );
+  }
+
+  Future<void> _submitThread(String title, String body) async {
+    if (_events.isEmpty) return;
+    final event = _events[_tabController?.index ?? 0];
+
+    try {
+      if (DummyDataService.USE_DUMMY_DATA) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thread creation disabled in dummy mode')),
+        );
+        return;
+      }
+
+      await _apiService!.createThread(event.id, title, body);
+      _threadsCache.remove(event.id);
+      await _loadThreadsForEvent(event.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thread created successfully!')),
+      );
+    } catch (e) {
+      print('[ERROR] Failed to create thread: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create thread: $e')),
+      );
+    }
   }
 
   String _formatTimeAgo(DateTime dateTime) {
@@ -388,9 +424,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
 
   @override
   void dispose() {
-    if (_events.isNotEmpty) {
-      _tabController.dispose();
-    }
+    _tabController?.dispose();
     super.dispose();
   }
 }

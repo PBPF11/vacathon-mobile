@@ -24,6 +24,7 @@ class _EventsScreenState extends State<EventsScreen> {
   EventsResponse? _eventsResponse;
   bool _isLoading = true;
   String _errorMessage = '';
+  ApiService? _apiService;
 
   // Filter states
   final TextEditingController _searchController = TextEditingController();
@@ -40,16 +41,12 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFilterOptions();
-    _loadEvents();
+    _bootstrap();
   }
 
-  Future<void> _loadFilterOptions() async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      _availableCities = DummyDataService.getUniqueCities();
-      _availableDistances = DummyDataService.getUniqueDistances();
-    }
-    setState(() {});
+  Future<void> _bootstrap() async {
+    _apiService = await ApiService.instance();
+    await _loadEvents();
   }
 
   Future<void> _loadEvents() async {
@@ -73,7 +70,12 @@ class _EventsScreenState extends State<EventsScreen> {
         filters['distance'] = _selectedDistance!.toString();
       }
 
-      _eventsResponse = await DummyDataService.getEvents(filters: filters);
+      if (DummyDataService.USE_DUMMY_DATA) {
+        _eventsResponse = await DummyDataService.getEvents(filters: filters);
+      } else {
+        _eventsResponse = await _apiService?.getEvents(filters: filters);
+      }
+      _deriveFilterOptions();
     } catch (e) {
       _errorMessage = 'Failed to load events: $e';
       print('[ERROR] EventsScreen._loadEvents: $e');
@@ -92,6 +94,19 @@ class _EventsScreenState extends State<EventsScreen> {
       _selectedDistance = null;
     });
     _loadEvents();
+  }
+
+  void _deriveFilterOptions() {
+    final events = _eventsResponse?.events ?? [];
+    _availableCities = events.map((event) => event.city).toSet().toList()..sort();
+
+    final distanceSet = <double>{};
+    for (final event in events) {
+      for (final category in event.categories) {
+        distanceSet.add(category.distanceKm);
+      }
+    }
+    _availableDistances = distanceSet.toList()..sort();
   }
 
   @override
