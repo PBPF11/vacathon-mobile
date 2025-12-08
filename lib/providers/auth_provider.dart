@@ -12,6 +12,9 @@ class AuthProvider with ChangeNotifier {
   // Instance ApiService untuk komunikasi ke backend
   late ApiService _apiService;
 
+  ApiService get apiService => _apiService;
+
+
   // Instance CookieRequest dari pbp_django_auth
   final CookieRequest request;
 
