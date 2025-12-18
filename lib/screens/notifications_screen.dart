@@ -31,7 +31,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _bootstrap() async {
-    _apiService = await ApiService.instance();
+    _apiService = ApiService.instance;
     await _loadNotifications();
   }
 
@@ -40,12 +40,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _isLoading = true;
     });
 
+    print('[DEBUG] Loading notifications...');
     try {
       _notificationsResponse = await (DummyDataService.USE_DUMMY_DATA
           ? DummyDataService.getNotifications(unreadOnly: _showUnreadOnly)
           : _apiService!.getNotifications(unreadOnly: _showUnreadOnly));
+      print('[DEBUG] Notifications loaded: ${_notificationsResponse?.notifications.length} notifications');
     } catch (e) {
-      print('[ERROR] Failed to load notifications: $e');
+      print('[DEBUG] Error loading notifications: $e');
     } finally {
       setState(() {
         _isLoading = false;
@@ -139,8 +141,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _notificationsResponse == null || _notificationsResponse!.notifications.isEmpty
-              ? _buildEmptyState()
-              : _buildNotificationsList(),
+          ? _buildEmptyState()
+          : _buildNotificationsList(),
     );
   }
 

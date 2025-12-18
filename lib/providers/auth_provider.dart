@@ -9,19 +9,12 @@ class AuthProvider with ChangeNotifier {
   String? _errorMessage;
   UserProfile? _userProfile;
 
-  // Instance ApiService untuk komunikasi ke backend
-  late ApiService _apiService;
-
-  ApiService get apiService => _apiService;
-
-
   // Instance CookieRequest dari pbp_django_auth
   final CookieRequest request;
 
   // Constructor: Menerima request dari main.dart
   AuthProvider(this.request) {
-    // Inisialisasi ApiService dengan request yang diberikan
-    _apiService = ApiService(request);
+    ApiService.initialize(request);
     _checkLoginStatus();
   }
 
@@ -51,14 +44,13 @@ class AuthProvider with ChangeNotifier {
 
   /// Fungsi Login
   Future<void> login(String username, String password) async {
-    _apiService ??= await ApiService.instance();
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
       // Panggil fungsi login dari ApiService
-      final response = await _apiService.login(username, password);
+      final response = await ApiService.instance.login(username, password);
 
       // Cek status dari response JSON Django
       if (response['status'] == true) {
@@ -87,7 +79,7 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.register(username, password);
+      final response = await ApiService.instance.register(username, password);
 
       if (response['status'] == true) {
         // Register sukses!
@@ -112,12 +104,11 @@ class AuthProvider with ChangeNotifier {
 
   /// Fungsi Logout
   Future<void> logout() async {
-    _apiService ??= await ApiService.instance();
     _isLoading = true;
     notifyListeners();
 
     try {
-      await _apiService.logout();
+      await ApiService.instance.logout();
     } catch (e) {
       // Abaikan error saat logout (misal koneksi putus), tetap hapus state lokal
       print('[AUTH] Logout warning: $e');
@@ -131,9 +122,8 @@ class AuthProvider with ChangeNotifier {
 
   /// Ambil data profil user dari backend
   Future<void> loadProfile() async {
-    _apiService ??= await ApiService.instance();
     try {
-      _userProfile = await _apiService.getProfile();
+      _userProfile = await ApiService.instance.getProfile();
       notifyListeners();
     } catch (e) {
       print('[AUTH] Failed to load profile: $e');
@@ -148,9 +138,8 @@ class AuthProvider with ChangeNotifier {
 
   /// Update profil user
   Future<void> updateProfile(Map<String, dynamic> profileData) async {
-    _apiService ??= await ApiService.instance();
     try {
-      _userProfile = await _apiService.updateProfile(profileData);
+      _userProfile = await ApiService.instance.updateProfile(profileData);
       notifyListeners();
     } catch (e) {
       print('[AUTH] Failed to update profile: $e');

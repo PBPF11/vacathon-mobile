@@ -189,8 +189,8 @@ class DummyDataService {
   static final List<ForumThread> _dummyThreads = [
     ForumThread(
       id: 1,
-      eventId: 1,
-      authorId: 1,
+      eventTitle: 'Jakarta Marathon 2024',
+      authorId: '1',
       authorUsername: 'testuser',
       title: 'Training tips for Jakarta Marathon',
       slug: 'training-tips-jakarta-marathon',
@@ -204,8 +204,8 @@ class DummyDataService {
     ),
     ForumThread(
       id: 2,
-      eventId: 1,
-      authorId: 2,
+      eventTitle: 'Jakarta Marathon 2024',
+      authorId: '2',
       authorUsername: 'runningfan',
       title: 'Accommodation recommendations near start line',
       slug: 'accommodation-jakarta-marathon',
@@ -223,7 +223,7 @@ class DummyDataService {
     ForumPost(
       id: 1,
       threadId: 1,
-      authorId: 2,
+      authorId: '2',
       authorUsername: 'runningfan',
       parentId: null,
       content: 'I recommend starting with a base of 20-30km per week and gradually increasing. Hill training is crucial for Jakarta\'s terrain!',
@@ -235,7 +235,7 @@ class DummyDataService {
     ForumPost(
       id: 2,
       threadId: 1,
-      authorId: 3,
+      authorId: '3',
       authorUsername: 'marathoner',
       parentId: 1,
       content: 'Agreed! Also don\'t forget about speed work. Intervals on Wednesdays really helped me.',
@@ -321,21 +321,21 @@ class DummyDataService {
       }
       if (filters['city'] != null) {
         filteredEvents = filteredEvents.where((e) =>
-          e.city.toLowerCase().contains(filters['city']!.toLowerCase())).toList();
+            e.city.toLowerCase().contains(filters['city']!.toLowerCase())).toList();
       }
       if (filters['distance'] != null) {
         final distance = double.tryParse(filters['distance']!);
         if (distance != null) {
           filteredEvents = filteredEvents.where((e) =>
-            e.categories.any((cat) => cat.distanceKm == distance)).toList();
+              e.categories.any((cat) => cat.distanceKm == distance)).toList();
         }
       }
       if (filters['search'] != null) {
         final query = filters['search']!.toLowerCase();
         filteredEvents = filteredEvents.where((e) =>
-          e.title.toLowerCase().contains(query) ||
-          e.description.toLowerCase().contains(query) ||
-          e.city.toLowerCase().contains(query)).toList();
+        e.title.toLowerCase().contains(query) ||
+            e.description.toLowerCase().contains(query) ||
+            e.city.toLowerCase().contains(query)).toList();
       }
     }
 
@@ -484,7 +484,8 @@ class DummyDataService {
 
     print('[DUMMY] getThreads called with eventId: $eventId, page: $page');
 
-    final eventThreads = _dummyThreads.where((t) => t.eventId == eventId).toList();
+    // Since dummy uses title, and eventId is 1 for Jakarta, filter by title containing 'Jakarta'
+    final eventThreads = _dummyThreads.where((t) => t.eventTitle.contains('Jakarta')).toList();
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
     final paginatedThreads = eventThreads.sublist(

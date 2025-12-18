@@ -1,8 +1,8 @@
 /// Represents a forum thread.
 class ForumThread {
   final int id;
-  final int eventId;
-  final int authorId;
+  final String eventTitle;
+  final String authorId;
   final String authorUsername;
   final String title;
   final String slug;
@@ -16,7 +16,7 @@ class ForumThread {
 
   ForumThread({
     required this.id,
-    required this.eventId,
+    required this.eventTitle,
     required this.authorId,
     required this.authorUsername,
     required this.title,
@@ -33,25 +33,25 @@ class ForumThread {
   factory ForumThread.fromJson(Map<String, dynamic> json) {
     return ForumThread(
       id: json['id'],
-      eventId: json['event'],
-      authorId: json['author'],
+      eventTitle: json['event'] ?? 'Unknown Event',
+      authorId: json['author'] ?? 0,
       authorUsername: json['author_username'] ?? 'Unknown',
-      title: json['title'],
-      slug: json['slug'],
-      body: json['body'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-      lastActivityAt: DateTime.parse(json['last_activity_at']),
-      isPinned: json['is_pinned'],
-      isLocked: json['is_locked'],
-      viewCount: json['view_count'],
+      title: json['title'] ?? '',
+      slug: json['slug'] ?? '',
+      body: json['body'] ?? '',
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
+      lastActivityAt: json['last_activity_at'] != null ? DateTime.parse(json['last_activity_at']) : DateTime.now(),
+      isPinned: json['is_pinned'] ?? false,
+      isLocked: json['is_locked'] ?? false,
+      viewCount: json['view_count'] ?? 0,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'event': eventId,
+      'event': eventTitle,
       'author': authorId,
       'author_username': authorUsername,
       'title': title,
@@ -71,7 +71,7 @@ class ForumThread {
 class ForumPost {
   final int id;
   final int threadId;
-  final int authorId;
+  final String authorId;
   final String authorUsername;
   final int? parentId;
   final String content;

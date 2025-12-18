@@ -155,17 +155,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             onPressed: _isLoading ? null : _saveAccountSettings,
             child: _isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
                 : const Text(
-                    'Save',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
+              'Save',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -329,13 +329,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                               ),
                               child: _isLoading
                                   ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                      ),
-                                    )
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
                                   : const Text('Change Password'),
                             ),
                           ),
@@ -387,7 +387,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                               builder: (context) => AlertDialog(
                                 title: const Text('Delete Account'),
                                 content: const Text(
-                                  'Are you sure you want to delete your account? This action cannot be undone.'
+                                    'Are you sure you want to delete your account? This action cannot be undone.'
                                 ),
                                 actions: [
                                   TextButton(
