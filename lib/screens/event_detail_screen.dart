@@ -364,6 +364,168 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
           const SizedBox(height: 24),
 
+          // Registration Status
+          const Text(
+            'Registration Status',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: primaryColor,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.event.registrationStatusMessage,
+                    style: TextStyle(
+                      color: textColor.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Progress Bar
+                  Container(
+                    width: double.infinity,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: darkColor.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: FractionallySizedBox(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: widget.event.capacityRatio / 100,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [primaryColor, accentColor],
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (widget.event.remainingSlots != null)
+                        Text(
+                          '${widget.event.remainingSlots} slots remaining',
+                          style: TextStyle(
+                            color: textColor.withOpacity(0.6),
+                            fontSize: 14,
+                          ),
+                        ),
+                      Text(
+                        '${widget.event.capacityRatio.toStringAsFixed(0)}% capacity',
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.6),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (widget.event.registrationOpenDate != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Opened: ${_formatDate(widget.event.registrationOpenDate!)}',
+                      style: TextStyle(
+                        color: textColor.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  Text(
+                    'Deadline: ${_formatDate(widget.event.registrationDeadline)}',
+                    style: TextStyle(
+                      color: textColor.withOpacity(0.6),
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: widget.event.isRegistrationOpen
+                        ? () => _showRegistrationDialog()
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Proceed to Registration'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Event Location Map
+          const Text(
+            'Event Location',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: primaryColor,
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.grey[200],
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.map, size: 48, color: primaryColor),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${widget.event.city}, ${widget.event.country}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Open Google Maps directions
+                      final url =
+                          'https://www.google.com/maps/dir/?api=1&destination=${widget.event.city}+${widget.event.country}';
+                      print('[ACTION] Open Google Maps: $url');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Google Maps directions coming soon'),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                    ),
+                    child: const Text('Get Directions'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // Registration Info
           const Text(
             'Registration Information',
@@ -383,18 +545,19 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                 children: [
                   _buildInfoRow(
                     'Registration Opens',
-                    widget.event.registrationOpenDate?.toString().split(
-                      ' ',
-                    )[0] ??
-                        'TBD',
+                    widget.event.registrationOpenDate != null
+                        ? _formatDate(widget.event.registrationOpenDate!)
+                        : 'TBD',
                   ),
                   _buildInfoRow(
                     'Registration Deadline',
-                    widget.event.registrationDeadline.toString().split(' ')[0],
+                    _formatDate(widget.event.registrationDeadline),
                   ),
                   _buildInfoRow(
                     'Participant Limit',
-                    widget.event.participantLimit.toString(),
+                    widget.event.participantLimit == 0
+                        ? 'Unlimited'
+                        : widget.event.participantLimit.toString(),
                   ),
                   _buildInfoRow(
                     'Current Registrations',
@@ -674,6 +837,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     );
   }
 
+  String _formatDate(DateTime date) {
+    return '${date.month}/${date.day}/${date.year}';
+  }
+
   void _showRegistrationDialog() {
     showDialog(
       context: context,
@@ -747,26 +914,24 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
 
     try {
       // Prepare registration data
-      final registrationData = {
+      final Map<String, dynamic> registrationData = {
         'phone_number': _phoneController.text.trim(),
         'emergency_contact_name': _emergencyNameController.text.trim(),
         'emergency_contact_phone': _emergencyPhoneController.text.trim(),
         'medical_notes': _medicalNotesController.text.trim(),
       };
 
-      // Add category or distance label based on event structure
-      if (widget.event.categories.isNotEmpty) {
-        if (_selectedCategoryId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select a distance category')),
-          );
-          setState(() {
-            _isSubmitting = false;
-          });
-          return;
-        }
-        registrationData['category'] = _selectedCategoryId.toString();
-      } else {
+      // Debug logs
+      print('[DEBUG] Event categories: ${widget.event.categories}');
+      print('[DEBUG] Selected category: $_selectedCategoryId');
+
+      // Add category if selected
+      if (_selectedCategoryId != null) {
+        registrationData['category'] = _selectedCategoryId;
+      }
+
+      // Add distance label for open events
+      if (widget.event.categories.isEmpty) {
         if (_distanceLabelController.text.trim().isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -781,6 +946,11 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
         registrationData['distance_label'] = _distanceLabelController.text
             .trim();
       }
+
+      // Add terms acceptance
+      registrationData['accept_terms'] = _acceptTerms;
+
+      print('[DEBUG] Registration data: $registrationData');
 
       print(
         '[ACTION] Submit registration for event ${widget.event.id}: $registrationData',

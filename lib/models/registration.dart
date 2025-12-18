@@ -18,6 +18,7 @@ class EventRegistration {
   final String paymentStatus;
   final Map<String, dynamic> formPayload;
   final String? decisionNote;
+  final String? bibNumber;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? confirmedAt;
@@ -40,6 +41,7 @@ class EventRegistration {
     required this.paymentStatus,
     required this.formPayload,
     this.decisionNote,
+    this.bibNumber,
     required this.createdAt,
     required this.updatedAt,
     this.confirmedAt,
@@ -64,6 +66,7 @@ class EventRegistration {
       paymentStatus: json['payment_status'],
       formPayload: json['form_payload'] ?? {},
       decisionNote: json['decision_note'],
+      bibNumber: json['bib_number'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       confirmedAt: json['confirmed_at'] != null
@@ -93,6 +96,7 @@ class EventRegistration {
       'payment_status': paymentStatus,
       'form_payload': formPayload,
       'decision_note': decisionNote,
+      'bib_number': bibNumber,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'confirmed_at': confirmedAt?.toIso8601String(),

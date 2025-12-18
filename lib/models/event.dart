@@ -79,6 +79,22 @@ class Event {
     required this.updatedAt,
   });
 
+  static DateTime _parseDate(String? dateStr) {
+    if (dateStr == null) return DateTime.now();
+
+    // Fix 2-digit years in string format (0026 -> 2026)
+    if (dateStr.startsWith('00')) {
+      dateStr = '20' + dateStr.substring(2);
+    }
+
+    try {
+      final dt = DateTime.parse(dateStr);
+      return dt;
+    } catch (e) {
+      return DateTime.now();
+    }
+  }
+
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'],
@@ -88,17 +104,15 @@ class Event {
       city: json['city'] ?? '',
       country: json['country'] ?? '',
       venue: json['venue'],
-      startDate: DateTime.parse(json['start_date']),
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      startDate: Event._parseDate(json['start_date']),
+      endDate: json['end_date'] != null ? Event._parseDate(json['end_date']) : null,
       registrationOpenDate: json['registration_open_date'] != null
-          ? DateTime.parse(json['registration_open_date'])
-          : null,
-      registrationDeadline: json['registration_deadline'] != null
-          ? DateTime.parse(json['registration_deadline'])
-          : DateTime.now(),
+          ? Event._parseDate(json['registration_open_date'])
+          : Event._parseDate(json['start_date']),
+      registrationDeadline: Event._parseDate(json['registration_deadline']),
       status: json['status'] ?? 'upcoming',
       popularityScore: json['popularity_score'] ?? 0,
-      participantLimit: json['participant_limit'] ?? 0,
+      participantLimit: json['participant_limit'] ?? 100,
       registeredCount: json['registered_count'] ?? 0,
       featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
@@ -106,10 +120,10 @@ class Event {
           ?.map((cat) => EventCategory.fromJson(cat))
           ?.toList() ?? [],
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? Event._parseDate(json['created_at'])
           : DateTime.now(),
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? Event._parseDate(json['updated_at'])
           : DateTime.now(),
     );
   }
@@ -143,9 +157,43 @@ class Event {
   bool get isRegistrationOpen {
     final now = DateTime.now();
     final openDate = registrationOpenDate ?? now;
+    final hasCapacity = participantLimit == 0 || registeredCount < participantLimit;
     return openDate.isBefore(now) &&
-        now.isBefore(registrationDeadline) &&
-        status != 'completed';
+           now.isBefore(registrationDeadline) &&
+           status != 'completed' &&
+           hasCapacity;
+  }
+
+  /// Get capacity ratio (0-100)
+  double get capacityRatio {
+    if (participantLimit == 0) return 0;
+    return (registeredCount / participantLimit).clamp(0.0, 1.0) * 100;
+  }
+
+  /// Get remaining slots
+  int? get remainingSlots {
+    if (participantLimit == 0) return null;
+    return participantLimit - registeredCount;
+  }
+
+  /// Get specific registration status message
+  String get registrationStatusMessage {
+    if (status == 'completed') {
+      return 'This event has been completed.';
+    }
+    if (DateTime.now().isAfter(registrationDeadline)) {
+      return 'Registration deadline has passed.';
+    }
+    if (registrationOpenDate != null && DateTime.now().isBefore(registrationOpenDate!)) {
+      return 'Registration opens on ${registrationOpenDate!.month}/${registrationOpenDate!.day}/${registrationOpenDate!.year}.';
+    }
+    if (participantLimit > 0 && registeredCount >= participantLimit) {
+      return 'This event is fully booked.';
+    }
+    if (isRegistrationOpen) {
+      return 'Registration is open. Secure your bib today!';
+    }
+    return 'Registration is currently closed.';
   }
 
   /// Get duration in days

@@ -162,7 +162,14 @@ def register_ajax(request, slug):
         user=request.user, event=event
     ).select_related("category").first()
 
-    form = RegistrationForm(request.POST, event=event, user=request.user, instance=existing_registration)
+    # Handle both JSON and form-encoded data
+    if request.content_type == 'application/json':
+        import json
+        data = json.loads(request.body)
+    else:
+        data = request.POST
+
+    form = RegistrationForm(data, event=event, user=request.user, instance=existing_registration)
 
     if form.is_valid():
         waitlisted = form.cleaned_data.pop("waitlisted", False)
