@@ -24,7 +24,7 @@ class _EventsScreenState extends State<EventsScreen> {
   EventsResponse? _eventsResponse;
   bool _isLoading = true;
   String _errorMessage = '';
-  ApiService? _apiService;
+  late ApiService _apiService;
 
   // Filter states
   final TextEditingController _searchController = TextEditingController();
@@ -45,7 +45,7 @@ class _EventsScreenState extends State<EventsScreen> {
   }
 
   Future<void> _bootstrap() async {
-    _apiService = await ApiService.instance();
+    _apiService = ApiService.instance;
     await _loadEvents();
   }
 
@@ -55,6 +55,7 @@ class _EventsScreenState extends State<EventsScreen> {
       _errorMessage = '';
     });
 
+    print('[DEBUG] Loading events...');
     try {
       final filters = <String, String>{};
       if (_searchController.text.isNotEmpty) {
@@ -70,15 +71,21 @@ class _EventsScreenState extends State<EventsScreen> {
         filters['distance'] = _selectedDistance!.toString();
       }
 
+      print('[DEBUG] Filters: $filters');
       if (DummyDataService.USE_DUMMY_DATA) {
+        print('[DEBUG] Using dummy data');
         _eventsResponse = await DummyDataService.getEvents(filters: filters);
+        print('[DEBUG] Dummy data loaded: ${_eventsResponse?.events.length} events');
       } else {
-        _eventsResponse = await _apiService?.getEvents(filters: filters);
+        print('[DEBUG] Calling API');
+        _eventsResponse = await _apiService.getEvents(filters: filters);
+        print('[DEBUG] API data loaded: ${_eventsResponse?.events.length} events');
       }
       _deriveFilterOptions();
+      print('[DEBUG] Events loaded successfully');
     } catch (e) {
       _errorMessage = 'Failed to load events: $e';
-      print('[ERROR] EventsScreen._loadEvents: $e');
+      print('[DEBUG] Error loading events: $e');
     } finally {
       setState(() {
         _isLoading = false;

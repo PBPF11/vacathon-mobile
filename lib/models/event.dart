@@ -82,29 +82,35 @@ class Event {
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
       id: json['id'],
-      title: json['title'],
-      slug: json['slug'],
-      description: json['description'],
-      city: json['city'],
-      country: json['country'],
+      title: json['title'] ?? '',
+      slug: json['slug'] ?? '',
+      description: json['description'] ?? '',
+      city: json['city'] ?? '',
+      country: json['country'] ?? '',
       venue: json['venue'],
       startDate: DateTime.parse(json['start_date']),
       endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
       registrationOpenDate: json['registration_open_date'] != null
           ? DateTime.parse(json['registration_open_date'])
           : null,
-      registrationDeadline: DateTime.parse(json['registration_deadline']),
-      status: json['status'],
-      popularityScore: json['popularity_score'],
-      participantLimit: json['participant_limit'],
-      registeredCount: json['registered_count'],
-      featured: json['featured'],
+      registrationDeadline: json['registration_deadline'] != null
+          ? DateTime.parse(json['registration_deadline'])
+          : DateTime.now(),
+      status: json['status'] ?? 'upcoming',
+      popularityScore: json['popularity_score'] ?? 0,
+      participantLimit: json['participant_limit'] ?? 0,
+      registeredCount: json['registered_count'] ?? 0,
+      featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
-      categories: (json['categories'] as List)
-          .map((cat) => EventCategory.fromJson(cat))
-          .toList(),
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      categories: (json['categories'] as List?)
+          ?.map((cat) => EventCategory.fromJson(cat))
+          ?.toList() ?? [],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
     );
   }
 

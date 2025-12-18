@@ -25,7 +25,7 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
   UserProfile? _profile;
   List<RunnerAchievement> _achievements = [];
   bool _isLoading = true;
-  ApiService? _apiService;
+  late ApiService _apiService;
 
   @override
   void initState() {
@@ -35,13 +35,15 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
   }
 
   Future<void> _bootstrap() async {
-    _apiService = await ApiService.instance();
+    _apiService = ApiService.instance;
     await _loadProfileData();
   }
 
   Future<void> _loadProfileData() async {
+    print('[DEBUG] Loading profile data...');
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (!authProvider.isAuthenticated) {
+      print('[DEBUG] User not authenticated');
       setState(() {
         _isLoading = false;
       });
@@ -51,11 +53,13 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
     try {
       await authProvider.loadProfile();
       _profile = authProvider.userProfile;
+      print('[DEBUG] Profile loaded: ${_profile?.username}');
       _achievements = await (DummyDataService.USE_DUMMY_DATA
           ? DummyDataService.getAchievements()
-          : _apiService!.getAchievements());
+          : _apiService.getAchievements());
+      print('[DEBUG] Achievements loaded: ${_achievements.length}');
     } catch (e) {
-      print('[ERROR] Failed to load profile: $e');
+      print('[DEBUG] Error loading profile: $e');
     } finally {
       setState(() {
         _isLoading = false;

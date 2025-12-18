@@ -23,7 +23,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
   List<Event> _events = [];
   Map<int, ThreadsResponse> _threadsCache = {};
   bool _isLoading = true;
-  ApiService? _apiService;
+  late ApiService _apiService;
 
   @override
   void initState() {
@@ -32,15 +32,17 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
   }
 
   Future<void> _bootstrap() async {
-    _apiService = await ApiService.instance();
+    _apiService = ApiService.instance;
     await _loadEvents();
   }
 
   Future<void> _loadEvents() async {
+    print('[DEBUG] ForumScreen loading events...');
     try {
       final eventsResponse = DummyDataService.USE_DUMMY_DATA
           ? await DummyDataService.getEvents()
-          : await _apiService!.getEvents();
+          : await _apiService.getEvents();
+      print('[DEBUG] Forum events loaded: ${eventsResponse.events.length} events');
       setState(() {
         _events = eventsResponse.events.where((event) => event.status != 'completed').toList();
         if (_events.isNotEmpty) {
@@ -54,7 +56,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
         await _loadThreadsForEvent(_events[0].id);
       }
     } catch (e) {
-      print('[ERROR] Failed to load events: $e');
+      print('[DEBUG] Error loading forum events: $e');
       setState(() {
         _isLoading = false;
       });
@@ -67,7 +69,7 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
     try {
       final threadsResponse = DummyDataService.USE_DUMMY_DATA
           ? await DummyDataService.getThreads(eventId)
-          : await _apiService!.getThreads(eventId);
+          : await _apiService.getThreads(eventId);
       setState(() {
         _threadsCache[eventId] = threadsResponse;
       });

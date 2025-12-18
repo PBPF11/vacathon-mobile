@@ -27,7 +27,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   late TabController _tabController;
   EventDetail? _eventDetail;
   bool _isLoadingDetail = true;
-  ApiService? _apiService;
+  late ApiService _apiService;
 
   @override
   void initState() {
@@ -37,7 +37,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   }
 
   Future<void> _bootstrap() async {
-    _apiService = await ApiService.instance();
+    _apiService = ApiService.instance;
     await _loadEventDetail();
   }
 
@@ -46,15 +46,17 @@ class _EventDetailScreenState extends State<EventDetailScreen>
       _isLoadingDetail = true;
     });
 
+    print('[DEBUG] Loading event detail for ${widget.event.slug}...');
     try {
       // GUNAKAN REAL API
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       // Gunakan SLUG, bukan ID
-      _eventDetail = await authProvider.apiService.getEventDetail(
+      _eventDetail = await ApiService.instance.getEventDetail(
         widget.event.slug,
       );
+      print('[DEBUG] Event detail loaded');
     } catch (e) {
-      print('[ERROR] Failed to load event detail: $e');
+      print('[DEBUG] Error loading event detail: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -789,7 +791,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
 
       // PANGGIL API REGISTER
       // Pastikan method registerForEvent di ApiService sudah diupdate menerima (String slug, int catId, map data)
-      final registration = await authProvider.apiService.registerForEvent(
+      final registration = await ApiService.instance.registerForEvent(
         widget.event.slug, // Gunakan Slug
         _selectedCategoryId ??
             0, // Kirim ID Kategori (pastikan handle null/jarak manual jika perlu)

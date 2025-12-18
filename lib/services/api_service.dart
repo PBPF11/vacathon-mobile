@@ -11,10 +11,24 @@ class ApiService {
   // HP Fisik: Pakai IP Laptop (misal 'http://192.168.1.xxx:8000')
   static const String baseUrl = 'http://localhost:8000';
 
+  // Singleton instance
+  static ApiService? _instance;
+
+  static ApiService get instance {
+    if (_instance == null) {
+      throw Exception('ApiService not initialized. Call ApiService.initialize() first.');
+    }
+    return _instance!;
+  }
+
+  static void initialize(CookieRequest request) {
+    _instance = ApiService._internal(request);
+  }
+
   // Instance CookieRequest disuntikkan dari AuthProvider
   final CookieRequest request;
 
-  ApiService(this.request);
+  ApiService._internal(this.request);
 
   // --- Helper Methods ---
 
@@ -29,9 +43,15 @@ class ApiService {
     }
 
     print('[API] GET $url');
-    // request.get dari pbp_django_auth otomatis menangani cookies
-    final response = await request.get(url);
-    return response;
+    try {
+      // request.get dari pbp_django_auth otomatis menangani cookies
+      final response = await request.get(url);
+      print('[API] Response received: $response');
+      return response;
+    } catch (e) {
+      print('[API] Error in GET $url: $e');
+      rethrow;
+    }
   }
 
   /// Helper untuk POST request
@@ -230,8 +250,8 @@ class ApiService {
       // lalu nanti UI akan refresh list thread.
       return ForumThread(
         id: response['id'],
-        eventId: eventId,
-        authorId: 0, // Placeholder
+        eventTitle: 'Unknown Event', // Placeholder
+        authorId: '0', // Placeholder
         authorUsername: "Me",
         title: title,
         slug: response['slug'],
@@ -286,7 +306,7 @@ class ApiService {
       return ForumPost(
         id: response['post_id'],
         threadId: 0,
-        authorId: 0,
+        authorId: '0',
         authorUsername: "Me",
         content: content,
         createdAt: DateTime.now(),
