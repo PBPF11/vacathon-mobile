@@ -228,7 +228,7 @@ class UserProfile {
   /// Get upcoming races
   List<UserRaceHistory> get upcomingRaces {
     return history.where((item) =>
-        item.status == 'upcoming' || item.status == 'registered').toList();
+    item.status == 'upcoming' || item.status == 'registered').toList();
   }
 
   /// Get stats

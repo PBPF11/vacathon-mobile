@@ -114,23 +114,23 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
                       ),
                       child: _profile!.avatarUrl != null
                           ? ClipOval(
-                              child: Image.network(
-                                _profile!.avatarUrl!,
-                                width: 120,
-                                height: 120,
-                                fit: BoxFit.cover,
-                              ),
-                            )
+                        child: Image.network(
+                          _profile!.avatarUrl!,
+                          width: 120,
+                          height: 120,
+                          fit: BoxFit.cover,
+                        ),
+                      )
                           : Center(
-                              child: Text(
-                                _profile!.displayName.substring(0, 1).toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.w700,
-                                  color: whiteColor,
-                                ),
-                              ),
-                            ),
+                        child: Text(
+                          _profile!.displayName.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.w700,
+                            color: whiteColor,
+                          ),
+                        ),
+                      ),
                     ),
 
                     // Name

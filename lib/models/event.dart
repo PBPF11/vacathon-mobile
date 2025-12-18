@@ -144,8 +144,8 @@ class Event {
     final now = DateTime.now();
     final openDate = registrationOpenDate ?? now;
     return openDate.isBefore(now) &&
-           now.isBefore(registrationDeadline) &&
-           status != 'completed';
+        now.isBefore(registrationDeadline) &&
+        status != 'completed';
   }
 
   /// Get duration in days

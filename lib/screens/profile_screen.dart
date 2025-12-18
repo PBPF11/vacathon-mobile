@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
 
-// CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
 const Color accentColor = Color(0xFFBBEE63);
 const Color darkColor = Color(0xFF0F3057);
@@ -24,7 +23,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = false;
   bool _isInitialized = false;
 
-  // Form controllers
   final _displayNameController = TextEditingController();
   final _bioController = TextEditingController();
   final _cityController = TextEditingController();
@@ -39,7 +37,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   DateTime? _selectedBirthDate;
 
   final List<String> _distanceOptions = [
-    '5K', '10K', '21K', '42K', 'ULTRA'
+    '5K',
+    '10K',
+    '21K',
+    '42K',
+    'ULTRA'
   ];
 
   @override
@@ -69,7 +71,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _websiteController.text = _profile.website ?? '';
     _instagramController.text = _profile.instagramHandle ?? '';
     _stravaController.text = _profile.stravaProfile ?? '';
-    _selectedFavoriteDistance = _profile.favoriteDistance;
+    _selectedFavoriteDistance =
+    _distanceOptions.contains(_profile.favoriteDistance)
+        ? _profile.favoriteDistance
+        : null;
     _selectedBirthDate = _profile.birthDate;
   }
 
@@ -91,12 +96,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         avatarUrl: _profile.avatarUrl,
         favoriteDistance: _selectedFavoriteDistance,
         emergencyContactName: _emergencyContactNameController.text.trim().isEmpty
-            ? null : _emergencyContactNameController.text.trim(),
+            ? null
+            : _emergencyContactNameController.text.trim(),
         emergencyContactPhone: _emergencyContactPhoneController.text.trim().isEmpty
-            ? null : _emergencyContactPhoneController.text.trim(),
+            ? null
+            : _emergencyContactPhoneController.text.trim(),
         website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
-        instagramHandle: _instagramController.text.trim().isEmpty ? null : _instagramController.text.trim(),
-        stravaProfile: _stravaController.text.trim().isEmpty ? null : _stravaController.text.trim(),
+        instagramHandle:
+        _instagramController.text.trim().isEmpty ? null : _instagramController.text.trim(),
+        stravaProfile:
+        _stravaController.text.trim().isEmpty ? null : _stravaController.text.trim(),
         birthDate: _selectedBirthDate,
         createdAt: _profile.createdAt,
         updatedAt: DateTime.now(),
@@ -179,17 +188,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
                 : const Text(
-                    'Save',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
+              'Save',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -201,7 +210,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile Picture Section
                 Center(
                   child: Column(
                     children: [
@@ -215,27 +223,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         child: _profile.avatarUrl != null
                             ? ClipOval(
-                                child: Image.network(
-                                  _profile.avatarUrl!,
-                                  width: 120,
-                                  height: 120,
-                                  fit: BoxFit.cover,
-                                ),
-                              )
+                          child: Image.network(
+                            _profile.avatarUrl!,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                          ),
+                        )
                             : Center(
-                                child: Text(
-                                  _profile.displayName.substring(0, 1).toUpperCase(),
-                                  style: const TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w700,
-                                    color: primaryColor,
-                                  ),
-                                ),
-                              ),
+                          child: Text(
+                            _profile.displayName.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 40,
+                              fontWeight: FontWeight.w700,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
-                          // TODO: Implement image picker
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Image picker coming soon')),
                           );
@@ -251,7 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 32),
 
-                // Basic Information
                 _buildSectionTitle('Basic Information'),
                 const SizedBox(height: 16),
 
@@ -353,7 +359,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 32),
 
-                // Emergency Contact
                 _buildSectionTitle('Emergency Contact'),
                 const SizedBox(height: 16),
 
@@ -377,7 +382,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 32),
 
-                // Social Links
                 _buildSectionTitle('Social Links'),
                 const SizedBox(height: 16),
 

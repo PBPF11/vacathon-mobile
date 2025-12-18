@@ -150,27 +150,27 @@ class DashboardContent extends StatelessWidget {
                 final isDesktop = constraints.maxWidth > 1024;
                 return isDesktop
                     ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Profile card - matches .profile-card (320px width)
-                          SizedBox(
-                            width: 320,
-                            child: _buildProfileCard(context, profile),
-                          ),
-                          const SizedBox(width: 32),
-                          // Main content - matches .dashboard-main
-                          Expanded(
-                            child: _buildDashboardMain(profile),
-                          ),
-                        ],
-                      )
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Profile card - matches .profile-card (320px width)
+                    SizedBox(
+                      width: 320,
+                      child: _buildProfileCard(context, profile),
+                    ),
+                    const SizedBox(width: 32),
+                    // Main content - matches .dashboard-main
+                    Expanded(
+                      child: _buildDashboardMain(profile),
+                    ),
+                  ],
+                )
                     : Column(
-                        children: [
-                          _buildProfileCard(context, profile),
-                          const SizedBox(height: 32),
-                          _buildDashboardMain(profile),
-                        ],
-                      );
+                  children: [
+                    _buildProfileCard(context, profile),
+                    const SizedBox(height: 32),
+                    _buildDashboardMain(profile),
+                  ],
+                );
               },
             ),
           ],
@@ -208,23 +208,23 @@ class DashboardContent extends StatelessWidget {
             ),
             child: profile?.avatarUrl != null
                 ? ClipOval(
-                    child: Image.network(
-                      profile!.avatarUrl!,
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.cover,
-                    ),
-                  )
+              child: Image.network(
+                profile!.avatarUrl!,
+                width: 120,
+                height: 120,
+                fit: BoxFit.cover,
+              ),
+            )
                 : Center(
-                    child: Text(
-                      profile?.displayName?.substring(0, 1).toUpperCase() ?? 'R',
-                      style: const TextStyle(
-                        fontSize: 40, // matches font-size: 2.5rem
-                        fontWeight: FontWeight.w700,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
+              child: Text(
+                profile?.displayName?.substring(0, 1).toUpperCase() ?? 'R',
+                style: const TextStyle(
+                  fontSize: 40, // matches font-size: 2.5rem
+                  fontWeight: FontWeight.w700,
+                  color: primaryColor,
+                ),
+              ),
+            ),
           ),
 
           // Name

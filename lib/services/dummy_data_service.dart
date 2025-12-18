@@ -321,21 +321,21 @@ class DummyDataService {
       }
       if (filters['city'] != null) {
         filteredEvents = filteredEvents.where((e) =>
-          e.city.toLowerCase().contains(filters['city']!.toLowerCase())).toList();
+            e.city.toLowerCase().contains(filters['city']!.toLowerCase())).toList();
       }
       if (filters['distance'] != null) {
         final distance = double.tryParse(filters['distance']!);
         if (distance != null) {
           filteredEvents = filteredEvents.where((e) =>
-            e.categories.any((cat) => cat.distanceKm == distance)).toList();
+              e.categories.any((cat) => cat.distanceKm == distance)).toList();
         }
       }
       if (filters['search'] != null) {
         final query = filters['search']!.toLowerCase();
         filteredEvents = filteredEvents.where((e) =>
-          e.title.toLowerCase().contains(query) ||
-          e.description.toLowerCase().contains(query) ||
-          e.city.toLowerCase().contains(query)).toList();
+        e.title.toLowerCase().contains(query) ||
+            e.description.toLowerCase().contains(query) ||
+            e.city.toLowerCase().contains(query)).toList();
       }
     }
 

@@ -94,17 +94,17 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               background: widget.event.bannerImage != null
                   ? Image.network(widget.event.bannerImage!, fit: BoxFit.cover)
                   : Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [primaryColor, primaryColor.withOpacity(0.7)],
-                        ),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.event, size: 80, color: Colors.white),
-                      ),
-                    ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [primaryColor, primaryColor.withOpacity(0.7)],
+                  ),
+                ),
+                child: const Center(
+                  child: Icon(Icons.event, size: 80, color: Colors.white),
+                ),
+              ),
             ),
             actions: [
               IconButton(
@@ -166,14 +166,14 @@ class _EventDetailScreenState extends State<EventDetailScreen>
       // Floating Action Button for Registration
       floatingActionButton: widget.event.isRegistrationOpen
           ? FloatingActionButton.extended(
-              onPressed: () {
-                print('[ACTION] Register for event: ${widget.event.id}');
-                _showRegistrationDialog();
-              },
-              backgroundColor: primaryColor,
-              icon: const Icon(Icons.assignment),
-              label: const Text('Register'),
-            )
+        onPressed: () {
+          print('[ACTION] Register for event: ${widget.event.id}');
+          _showRegistrationDialog();
+        },
+        backgroundColor: primaryColor,
+        icon: const Icon(Icons.assignment),
+        label: const Text('Register'),
+      )
           : null,
     );
   }
@@ -384,8 +384,8 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   _buildInfoRow(
                     'Registration Opens',
                     widget.event.registrationOpenDate?.toString().split(
-                          ' ',
-                        )[0] ??
+                      ' ',
+                    )[0] ??
                         'TBD',
                   ),
                   _buildInfoRow(
@@ -419,45 +419,45 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     return schedules.isEmpty
         ? const Center(child: Text('No schedule information available'))
         : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: schedules.length,
-            itemBuilder: (context, index) {
-              final schedule = schedules[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        schedule.formattedTime,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: primaryColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+      padding: const EdgeInsets.all(16),
+      itemCount: schedules.length,
+      itemBuilder: (context, index) {
+        final schedule = schedules[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Center(
+                child: Text(
+                  schedule.formattedTime,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor,
                   ),
-                  title: Text(
-                    schedule.title,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle:
-                      schedule.description != null &&
-                          schedule.description!.isNotEmpty
-                      ? Text(schedule.description!)
-                      : null,
+                  textAlign: TextAlign.center,
                 ),
-              );
-            },
-          );
+              ),
+            ),
+            title: Text(
+              schedule.title,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            subtitle:
+            schedule.description != null &&
+                schedule.description!.isNotEmpty
+                ? Text(schedule.description!)
+                : null,
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildRouteTab() {
@@ -485,7 +485,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             ),
             const SizedBox(height: 16),
             ...aidStations.map(
-              (station) => Card(
+                  (station) => Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: Container(
@@ -529,7 +529,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             ),
             const SizedBox(height: 16),
             ...routeSegments.map(
-              (segment) => Card(
+                  (segment) => Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -594,47 +594,47 @@ class _EventDetailScreenState extends State<EventDetailScreen>
     return documents.isEmpty
         ? const Center(child: Text('No resources available'))
         : ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: documents.length,
-            itemBuilder: (context, index) {
-              final document = documents[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.description, color: primaryColor),
+      padding: const EdgeInsets.all(16),
+      itemCount: documents.length,
+      itemBuilder: (context, index) {
+        final document = documents[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.description, color: primaryColor),
+            ),
+            title: Text(document.title),
+            subtitle: Text(
+              '${document.documentTypeDisplay} • ${document.uploadedBy}',
+            ),
+            trailing: IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: () {
+                print(
+                  '[ACTION] Download document: ${document.documentUrl}',
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Download functionality coming soon'),
                   ),
-                  title: Text(document.title),
-                  subtitle: Text(
-                    '${document.documentTypeDisplay} • ${document.uploadedBy}',
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.download),
-                    onPressed: () {
-                      print(
-                        '[ACTION] Download document: ${document.documentUrl}',
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Download functionality coming soon'),
-                        ),
-                      );
-                    },
-                  ),
-                  onTap: () {
-                    print('[ACTION] View document: ${document.documentUrl}');
-                    // TODO: Open document
-                  },
-                ),
-              );
+                );
+              },
+            ),
+            onTap: () {
+              print('[ACTION] View document: ${document.documentUrl}');
+              // TODO: Open document
             },
-          );
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildStatItem(String label, String value) {
@@ -1072,7 +1072,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                   controller: _medicalNotesController,
                   decoration: InputDecoration(
                     hintText:
-                        'Any medical conditions, allergies, or medications we should be aware of...',
+                    'Any medical conditions, allergies, or medications we should be aware of...',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -1146,19 +1146,19 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                         ),
                         child: _isSubmitting
                             ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
                             : const Text(
-                                'Register',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
+                          'Register',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],
@@ -1184,10 +1184,10 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
+      BuildContext context,
+      double shrinkOffset,
+      bool overlapsContent,
+      ) {
     return Container(color: Colors.white, child: _tabBar);
   }
 

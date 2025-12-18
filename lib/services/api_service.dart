@@ -34,9 +34,9 @@ class ApiService {
 
   /// Helper untuk GET request
   Future<dynamic> get(
-    String endpoint, {
-    Map<String, String>? queryParams,
-  }) async {
+      String endpoint, {
+        Map<String, String>? queryParams,
+      }) async {
     String url = '$baseUrl$endpoint';
     if (queryParams != null && queryParams.isNotEmpty) {
       url += '?' + Uri(queryParameters: queryParams).query;
@@ -108,9 +108,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(
-    String username,
-    String password,
-  ) async {
+      String username,
+      String password,
+      ) async {
     // Panggil endpoint register di Django
     final response = await post('/profile/auth/register/', {
       'username': username,
@@ -208,8 +208,8 @@ class ApiService {
   }
 
   Future<RunnerAchievement> addAchievement(
-    Map<String, dynamic> achievementData,
-  ) async {
+      Map<String, dynamic> achievementData,
+      ) async {
     final data = await post('/profile/api/achievements/', achievementData);
     return RunnerAchievement.fromJson(data);
   }
@@ -232,10 +232,10 @@ class ApiService {
   }
 
   Future<ForumThread> createThread(
-    int eventId,
-    String title,
-    String body,
-  ) async {
+      int eventId,
+      String title,
+      String body,
+      ) async {
     // Endpoint yang baru kita buat di backend
     final response = await post('/forum/api/threads/create/', {
       'event': eventId,
@@ -279,10 +279,10 @@ class ApiService {
 
   // Pastikan parameter pertama adalah String threadSlug, BUKAN int threadId
   Future<ForumPost> createPost(
-    String threadSlug,
-    String content, {
-    int? parentId,
-  }) async {
+      String threadSlug,
+      String content, {
+        int? parentId,
+      }) async {
     // URL Backend: threads/<slug:slug>/posts/
     // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
     final url = '/forum/threads/$threadSlug/posts/';
@@ -338,10 +338,10 @@ class ApiService {
 
   // UBAH signature method ini
   Future<EventRegistration> registerForEvent(
-    String eventSlug, // GANTI int eventId menjadi String eventSlug
-    int categoryId,
-    Map<String, dynamic> registrationData,
-  ) async {
+      String eventSlug, // GANTI int eventId menjadi String eventSlug
+      int categoryId,
+      Map<String, dynamic> registrationData,
+      ) async {
     // Sesuaikan URL dengan backend: vacathon-be/registrations/urls.py
     // path("events/<slug:slug>/register/ajax/", register_ajax, name="register-ajax")
     // URL penuh: /register/events/<slug>/register/ajax/

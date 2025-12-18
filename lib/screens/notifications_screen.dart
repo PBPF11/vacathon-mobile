@@ -141,8 +141,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _notificationsResponse == null || _notificationsResponse!.notifications.isEmpty
-              ? _buildEmptyState()
-              : _buildNotificationsList(),
+          ? _buildEmptyState()
+          : _buildNotificationsList(),
     );
   }
 
