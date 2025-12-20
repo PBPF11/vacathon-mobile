@@ -29,22 +29,53 @@ class UserRaceHistory {
   });
 
   factory UserRaceHistory.fromJson(Map<String, dynamic> json) {
-    return UserRaceHistory(
-      id: json['id'],
-      event: Event.fromJson(json['event']),
-      category: json['category'],
-      registrationDate: DateTime.parse(json['registration_date']),
-      status: json['status'],
-      bibNumber: json['bib_number'],
-      finishTime: json['finish_time'] != null
-          ? Duration(seconds: json['finish_time'])
-          : null,
-      medalAwarded: json['medal_awarded'] ?? false,
-      certificateUrl: json['certificate_url'],
-      notes: json['notes'],
-      updatedAt: DateTime.parse(json['updated_at']),
-    );
-  }
+  return UserRaceHistory(
+    id: json['id'] ?? 0,
+    
+    // Logic untuk handle jika 'event' cuma String (dari history profile)
+    event: json['event'] is String 
+        ? Event(
+            id: 0,
+            title: json['event'], // Nama event dari JSON
+            slug: json['event_slug'] ?? '', 
+            description: '',
+            city: json['city'] ?? '', // Ambil city dari level history jika ada
+            country: json['country'] ?? '',
+            startDate: json['registration_date'] != null 
+                ? DateTime.parse(json['registration_date']) 
+                : DateTime.now(),
+            registrationDeadline: DateTime.now(),
+            status: json['status'] ?? '',
+            popularityScore: 0,
+            participantLimit: 0,
+            registeredCount: 0,
+            featured: false,
+            categories: [], // Kosongkan saja karena di history biasanya nggak lengkap
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          )
+        : Event.fromJson(json['event']),
+
+    category: json['category']?.toString() ?? '',
+    registrationDate: json['registration_date'] != null 
+        ? DateTime.parse(json['registration_date']) 
+        : DateTime.now(),
+    status: json['status'] ?? 'pending',
+    bibNumber: json['bib_number'],
+    
+    // Handle Duration dengan aman
+    finishTime: (json['finish_time'] != null && json['finish_time'] is int)
+        ? Duration(seconds: json['finish_time'])
+        : null,
+
+    medalAwarded: json['medal_awarded'] ?? false,
+    certificateUrl: json['certificate_url'],
+    notes: json['notes'],
+    updatedAt: json['updated_at'] != null 
+        ? DateTime.parse(json['updated_at']) 
+        : DateTime.now(),
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {
