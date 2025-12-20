@@ -57,6 +57,13 @@ dependencies:
   flutter_animate: ^4.5.0
   pbp_django_auth: ^0.4.0
 
+  # URL launcher for opening external links
+  url_launcher: ^6.3.0
+
+  # Google Maps for embedded maps
+  google_maps_flutter: ^2.10.0
+  google_maps_flutter_web: ^0.5.10
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

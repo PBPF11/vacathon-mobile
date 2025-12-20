@@ -4,6 +4,10 @@ import '../services/dummy_data_service.dart';
 import '../services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:html' as html;
+import 'dart:ui_web' as ui_web;
+import 'package:flutter/foundation.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -27,18 +31,29 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   late TabController _tabController;
   EventDetail? _eventDetail;
   bool _isLoadingDetail = true;
+  bool _isRegistered = false;
   late ApiService _apiService;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 1, vsync: this);
+    // Register the HTML view for the map
+    ui_web.platformViewRegistry.registerViewFactory(
+      'map-view',
+      (int viewId) => html.IFrameElement()
+        ..src = _eventDetail?.mapUrl ?? 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.816666!3d-6.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMDAuMCJTIDEwNsKwNDknMDAuMCJF!5e0!3m2!1sen!2sid!4v1638360000000!5m2!1sen!2sid'
+        ..style.border = 'none'
+        ..style.width = '100%'
+        ..style.height = '100%',
+    );
     _bootstrap();
   }
 
   Future<void> _bootstrap() async {
     _apiService = ApiService.instance;
     await _loadEventDetail();
+    await _checkRegistrationStatus();
   }
 
   Future<void> _loadEventDetail() async {
@@ -68,6 +83,19 @@ class _EventDetailScreenState extends State<EventDetailScreen>
           _isLoadingDetail = false;
         });
       }
+    }
+  }
+
+  Future<void> _checkRegistrationStatus() async {
+    try {
+      final profile = await _apiService.getProfile();
+      final isRegistered = profile.history.any((hist) => hist.event.slug == widget.event.slug && hist.status == 'registered');
+      setState(() {
+        _isRegistered = isRegistered;
+      });
+      print('[DEBUG] Registration status checked: $_isRegistered');
+    } catch (e) {
+      print('[DEBUG] Error checking registration status: $e');
     }
   }
 
@@ -129,42 +157,15 @@ class _EventDetailScreenState extends State<EventDetailScreen>
             ),
           ),
 
-          // Tab Bar
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _SliverAppBarDelegate(
-              TabBar(
-                controller: _tabController,
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Schedule'),
-                  Tab(text: 'Route'),
-                  Tab(text: 'Resources'),
-                ],
-                labelColor: primaryColor,
-                unselectedLabelColor: textColor.withOpacity(0.6),
-                indicatorColor: primaryColor,
-              ),
-            ),
-          ),
-
-          // Tab Content
+          // Tab Content - Only Overview
           SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildOverviewTab(),
-                _buildScheduleTab(),
-                _buildRouteTab(),
-                _buildResourcesTab(),
-              ],
-            ),
+            child: _buildOverviewTab(),
           ),
         ],
       ),
 
       // Floating Action Button for Registration
-      floatingActionButton: widget.event.isRegistrationOpen
+      floatingActionButton: (widget.event.isRegistrationOpen && !_isRegistered)
           ? FloatingActionButton.extended(
         onPressed: () {
           print('[ACTION] Register for event: ${widget.event.id}');
@@ -174,7 +175,12 @@ class _EventDetailScreenState extends State<EventDetailScreen>
         icon: const Icon(Icons.assignment),
         label: const Text('Register'),
       )
-          : null,
+          : _isRegistered ? FloatingActionButton.extended(
+        onPressed: null,
+        backgroundColor: primaryColor,
+        icon: const Icon(Icons.check),
+        label: const Text('Registered'),
+      ) : null,
     );
   }
 
@@ -451,17 +457,17 @@ class _EventDetailScreenState extends State<EventDetailScreen>
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: widget.event.isRegistrationOpen
+                    onPressed: (widget.event.isRegistrationOpen && !_isRegistered)
                         ? () => _showRegistrationDialog()
                         : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor: _isRegistered ? primaryColor : primaryColor,
                       minimumSize: const Size(double.infinity, 48),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('Proceed to Registration'),
+                    child: Text(_isRegistered ? 'I\'ve Registered' : 'Proceed to Registration'),
                   ),
                 ],
               ),
@@ -488,40 +494,46 @@ class _EventDetailScreenState extends State<EventDetailScreen>
               borderRadius: BorderRadius.circular(12),
               color: Colors.grey[200],
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 48, color: primaryColor),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${widget.event.city}, ${widget.event.country}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      // Open Google Maps directions
-                      final url =
-                          'https://www.google.com/maps/dir/?api=1&destination=${widget.event.city}+${widget.event.country}';
-                      print('[ACTION] Open Google Maps: $url');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Google Maps directions coming soon'),
+            child: kIsWeb
+                ? HtmlElementView(viewType: 'map-view')
+                : Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.map, size: 48, color: primaryColor),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${widget.event.city}, ${widget.event.country}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                        const SizedBox(height: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            // Open Google Maps directions
+                            final url =
+                                'https://www.google.com/maps/dir/?api=1&destination=${widget.event.city}+${widget.event.country}';
+                            print('[ACTION] Open Google Maps: $url');
+                            if (await canLaunchUrl(Uri.parse(url))) {
+                              await launchUrl(Uri.parse(url));
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Could not open Google Maps'),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                          ),
+                          child: const Text('Get Directions'),
+                        ),
+                      ],
                     ),
-                    child: const Text('Get Directions'),
                   ),
-                ],
-              ),
-            ),
           ),
 
           const SizedBox(height: 24),

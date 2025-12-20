@@ -225,7 +225,7 @@ class ApiService {
       return DummyDataService.getThreads(eventId, page: page);
     }
     final data = await get(
-      '/forum/api/threads/',
+      '/api/forum/threads/',
       queryParams: {'event': eventId.toString(), 'page': page.toString()},
     );
     return ThreadsResponse.fromJson(data);
@@ -237,90 +237,45 @@ class ApiService {
       String body,
       ) async {
     // Endpoint yang baru kita buat di backend
-    final response = await post('/forum/api/threads/create/', {
+    final response = await post('/api/forum/threads/', {
       'event': eventId,
       'title': title,
       'body': body,
     });
 
-    if (response['status'] == true) {
-      // Karena backend mungkin belum mengembalikan full object yang dibutuhkan fromJson,
-      // kita bisa return object manual atau fetch ulang.
-      // Untuk amannya, kita return dummy object yang valid agar UI tidak crash,
-      // lalu nanti UI akan refresh list thread.
-      return ForumThread(
-        id: response['id'],
-        eventTitle: 'Unknown Event', // Placeholder
-        authorId: '0', // Placeholder
-        authorUsername: "Me",
-        title: title,
-        slug: response['slug'],
-        body: body,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        lastActivityAt: DateTime.now(),
-        isPinned: false,
-        isLocked: false,
-        viewCount: 0,
-      );
-    } else {
-      throw Exception(response['message'] ?? "Gagal membuat thread");
-    }
+    // Backend returns the created thread object
+    return ForumThread.fromJson(response);
   }
 
-  Future<PostsResponse> getPosts(String threadSlug, {int page = 1}) async {
-    // Endpoint: /forum/api/threads/<slug>/posts/
+  Future<PostsResponse> getPosts(int threadId, {int page = 1}) async {
+    // Endpoint: /api/forum/threads/<thread_id>/posts/
     final data = await get(
-      '/forum/api/threads/$threadSlug/posts/',
+      '/api/forum/threads/$threadId/posts/',
       queryParams: {'page': page.toString()},
     );
     return PostsResponse.fromJson(data);
   }
 
-  // Pastikan parameter pertama adalah String threadSlug, BUKAN int threadId
   Future<ForumPost> createPost(
-      String threadSlug,
+      int threadId,
       String content, {
         int? parentId,
       }) async {
-    // URL Backend: threads/<slug:slug>/posts/
-    // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
-    final url = '/forum/threads/$threadSlug/posts/';
+    // URL Backend: /api/forum/posts/
+    final body = {
+      'thread': threadId,
+      'content': content,
+      if (parentId != null) 'parent': parentId
+    };
 
-    final body = {'content': content, if (parentId != null) 'parent': parentId};
+    final response = await post('/api/forum/posts/', body);
 
-    // Backend create_post di Django menggunakan form-data standard (request.POST)
-    // Tapi pbp_django_auth .postJson mengirim JSON.
-    // Anda mungkin perlu memodifikasi view create_post di backend agar menerima JSON,
-    // ATAU gunakan request.post (bukan postJson) di sini jika library mendukung multipart/form-data.
-
-    // SOLUSI TERBAIK (Ubah Backend Sedikit):
-    // Buka vacathon-be/forum/views.py > create_post
-    // Tambahkan logic untuk membaca json.loads(request.body) jika request.POST kosong.
-
-    final response = await request.postJson('$baseUrl$url', jsonEncode(body));
-
-    if (response['success'] == true) {
-      // Backend mengembalikan HTML untuk partial render, bukan JSON object post lengkap.
-      // Kita harus return object dummy agar Flutter tidak error.
-      return ForumPost(
-        id: response['post_id'],
-        threadId: 0,
-        authorId: '0',
-        authorUsername: "Me",
-        content: content,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        likesCount: 0,
-        isLikedByUser: false,
-      );
-    } else {
-      throw Exception("Gagal mengirim balasan");
-    }
+    // Backend returns the created post object
+    return ForumPost.fromJson(response);
   }
 
   Future<void> likePost(int postId) async {
-    await post('/profile/api/forum/posts/$postId/like/', {});
+    await post('/api/forum/posts/$postId/like/', {});
   }
 
   // --- Registrations API ---

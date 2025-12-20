@@ -189,7 +189,7 @@ class DummyDataService {
   static final List<ForumThread> _dummyThreads = [
     ForumThread(
       id: 1,
-      eventTitle: 'Jakarta Marathon 2024',
+      eventId: 1,
       authorId: '1',
       authorUsername: 'testuser',
       title: 'Training tips for Jakarta Marathon',
@@ -204,7 +204,7 @@ class DummyDataService {
     ),
     ForumThread(
       id: 2,
-      eventTitle: 'Jakarta Marathon 2024',
+      eventId: 1,
       authorId: '2',
       authorUsername: 'runningfan',
       title: 'Accommodation recommendations near start line',
@@ -484,8 +484,7 @@ class DummyDataService {
 
     print('[DUMMY] getThreads called with eventId: $eventId, page: $page');
 
-    // Since dummy uses title, and eventId is 1 for Jakarta, filter by title containing 'Jakarta'
-    final eventThreads = _dummyThreads.where((t) => t.eventTitle.contains('Jakarta')).toList();
+    final eventThreads = _dummyThreads.where((t) => t.eventId == eventId).toList();
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
     final paginatedThreads = eventThreads.sublist(

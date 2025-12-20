@@ -497,32 +497,12 @@ class _EventsScreenState extends State<EventsScreen> {
               const SizedBox(height: 12),
 
               // Registration info
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${event.registeredCount}/${event.participantLimit} registered',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  if (event.isRegistrationOpen)
-                    ElevatedButton(
-                      onPressed: () {
-                        // TODO: Navigate to registration
-                        print('[ACTION] Register for event: ${event.id}');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      child: const Text(
-                        'Register',
-                        style: TextStyle(fontSize: 14),
-                      ),
-                    ),
-                ],
+              Text(
+                '${event.registeredCount}/${event.participantLimit} registered',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
               ),
             ],
           ),

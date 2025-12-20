@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 
 /// Represents an event category (e.g., 5K, 21K).
 class EventCategory {
@@ -112,7 +113,7 @@ class Event {
       registrationDeadline: Event._parseDate(json['registration_deadline']),
       status: json['status'] ?? 'upcoming',
       popularityScore: json['popularity_score'] ?? 0,
-      participantLimit: json['participant_limit'] ?? 100,
+      participantLimit: json['participant_limit'] == 0 ? 100 : (json['participant_limit'] ?? 100),
       registeredCount: json['registered_count'] ?? 0,
       featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
