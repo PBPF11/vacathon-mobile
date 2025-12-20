@@ -4,7 +4,7 @@ import '../models/models.dart';
 /// EASY TO REMOVE: Replace all method calls with real API calls
 /// All dummy data is contained here for easy replacement
 class DummyDataService {
-  static const bool USE_DUMMY_DATA = false; // Set to false to use real API
+  static const bool USE_DUMMY_DATA = true; // Set to false to use real API
 
   // Dummy Events Data
   static final List<Event> _dummyEvents = [
@@ -710,6 +710,159 @@ class DummyDataService {
       }
     }
     return distances.toList()..sort();
+  }
+
+  // Admin Events Methods
+  static Future<EventsResponse> getAdminEvents({
+    int page = 1,
+    int pageSize = 20,
+    Map<String, String>? filters,
+  }) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    print('[DUMMY] getAdminEvents called with page: $page, filters: $filters');
+
+    // For admin, return all events without user-specific filtering
+    List<Event> filteredEvents = List.from(_dummyEvents);
+
+    if (filters != null) {
+      if (filters['status'] != null) {
+        filteredEvents = filteredEvents
+            .where((e) => e.status == filters['status'])
+            .toList();
+      }
+      if (filters['city'] != null) {
+        filteredEvents = filteredEvents
+            .where(
+              (e) =>
+                  e.city.toLowerCase().contains(filters['city']!.toLowerCase()),
+            )
+            .toList();
+      }
+      if (filters['search'] != null) {
+        final query = filters['search']!.toLowerCase();
+        filteredEvents = filteredEvents
+            .where(
+              (e) =>
+                  e.title.toLowerCase().contains(query) ||
+                  e.description.toLowerCase().contains(query) ||
+                  e.city.toLowerCase().contains(query),
+            )
+            .toList();
+      }
+    }
+
+    // Sort by date
+    filteredEvents.sort((a, b) => a.startDate.compareTo(b.startDate));
+
+    // Pagination
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = startIndex + pageSize;
+    final paginatedEvents = filteredEvents.sublist(
+      startIndex,
+      endIndex > filteredEvents.length ? filteredEvents.length : endIndex,
+    );
+
+    return EventsResponse(
+      events: paginatedEvents,
+      pagination: EventPagination(
+        page: page,
+        pages: (filteredEvents.length / pageSize).ceil(),
+        hasNext: endIndex < filteredEvents.length,
+        hasPrevious: page > 1,
+        total: filteredEvents.length,
+      ),
+    );
+  }
+
+  static Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    print('[DUMMY] createEvent called with data: $eventData');
+
+    // Generate new ID
+    final newId = _dummyEvents.isNotEmpty ? _dummyEvents.last.id + 1 : 1;
+
+    // Create new event
+    final newEvent = Event(
+      id: newId,
+      title: eventData['title'] ?? 'New Event',
+      slug: eventData['slug'] ?? 'new-event-${newId}',
+      description: eventData['description'] ?? '',
+      city: eventData['city'] ?? '',
+      country: eventData['country'] ?? 'Indonesia',
+      venue: eventData['venue'] ?? '',
+      startDate: DateTime.parse(eventData['start_date'] ?? DateTime.now().toIso8601String()),
+      endDate: DateTime.parse(eventData['end_date'] ?? DateTime.now().toIso8601String()),
+      registrationOpenDate: DateTime.parse(eventData['registration_open_date'] ?? DateTime.now().toIso8601String()),
+      registrationDeadline: DateTime.parse(eventData['registration_deadline'] ?? DateTime.now().toIso8601String()),
+      status: eventData['status'] ?? 'upcoming',
+      popularityScore: eventData['popularity_score'] ?? 0,
+      participantLimit: eventData['participant_limit'] ?? 1000,
+      registeredCount: 0,
+      featured: eventData['featured'] ?? false,
+      bannerImage: eventData['banner_image'],
+      categories: [], // TODO: Handle categories
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    _dummyEvents.add(newEvent);
+    return newEvent;
+  }
+
+  static Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    print('[DUMMY] updateEvent called with id: $eventId, data: $eventData');
+
+    final index = _dummyEvents.indexWhere((e) => e.id == eventId);
+    if (index == -1) {
+      throw Exception('Event not found');
+    }
+
+    final existingEvent = _dummyEvents[index];
+    final updatedEvent = Event(
+      id: existingEvent.id,
+      title: eventData['title'] ?? existingEvent.title,
+      slug: eventData['slug'] ?? existingEvent.slug,
+      description: eventData['description'] ?? existingEvent.description,
+      city: eventData['city'] ?? existingEvent.city,
+      country: eventData['country'] ?? existingEvent.country,
+      venue: eventData['venue'] ?? existingEvent.venue,
+      startDate: eventData['start_date'] != null ? DateTime.parse(eventData['start_date']) : existingEvent.startDate,
+      endDate: eventData['end_date'] != null ? DateTime.parse(eventData['end_date']) : existingEvent.endDate,
+      registrationOpenDate: eventData['registration_open_date'] != null ? DateTime.parse(eventData['registration_open_date']) : existingEvent.registrationOpenDate,
+      registrationDeadline: eventData['registration_deadline'] != null ? DateTime.parse(eventData['registration_deadline']) : existingEvent.registrationDeadline,
+      status: eventData['status'] ?? existingEvent.status,
+      popularityScore: eventData['popularity_score'] ?? existingEvent.popularityScore,
+      participantLimit: eventData['participant_limit'] ?? existingEvent.participantLimit,
+      registeredCount: existingEvent.registeredCount,
+      featured: eventData['featured'] ?? existingEvent.featured,
+      bannerImage: eventData['banner_image'] ?? existingEvent.bannerImage,
+      categories: existingEvent.categories, // TODO: Handle categories update
+      createdAt: existingEvent.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    _dummyEvents[index] = updatedEvent;
+    return updatedEvent;
+  }
+
+  static Future<void> deleteEvent(int eventId) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    print('[DUMMY] deleteEvent called with id: $eventId');
+
+    _dummyEvents.removeWhere((e) => e.id == eventId);
   }
 
   // Registration functionality

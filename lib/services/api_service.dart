@@ -100,6 +100,28 @@ class ApiService {
   // --- Authentication methods ---
 
   Future<Map<String, dynamic>> login(String username, String password) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      // Dummy login for admin
+      if (username == 'admin' && password == 'prama123') {
+        return {
+          'status': true,
+          'message': 'Login successful',
+          'user': {
+            'id': 1,
+            'username': 'admin',
+            'display_name': 'Admin User',
+            'is_superuser': true,
+            'is_staff': true,
+          }
+        };
+      } else {
+        return {
+          'status': false,
+          'message': 'Invalid credentials',
+        };
+      }
+    }
+
     // Gunakan request.login bawaan library untuk login yang support session/cookies
     // URL harus full path
     final response = await request.login('$baseUrl/profile/auth/login/', {
@@ -145,6 +167,48 @@ class ApiService {
     return EventsResponse.fromJson(data);
   }
 
+  // --- Admin Events API ---
+
+  Future<EventsResponse> getAdminEvents({
+    int page = 1,
+    Map<String, String>? filters,
+  }) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.getAdminEvents(page: page, filters: filters);
+    }
+
+    // Admin endpoint for managing events
+    final query = {'page': page.toString(), ...?filters};
+    final data = await get('/admin/events/api/', queryParams: query);
+    return EventsResponse.fromJson(data);
+  }
+
+  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.createEvent(eventData);
+    }
+
+    final data = await post('/admin/events/api/', eventData);
+    return Event.fromJson(data);
+  }
+
+  Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.updateEvent(eventId, eventData);
+    }
+
+    final data = await put('/admin/events/api/$eventId/', eventData);
+    return Event.fromJson(data);
+  }
+
+  Future<void> deleteEvent(int eventId) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.deleteEvent(eventId);
+    }
+
+    await delete('/admin/events/api/$eventId/');
+  }
+
   Future<Event> getEvent(int id) async {
     if (DummyDataService.USE_DUMMY_DATA) {
       return DummyDataService.getEvent(id);
@@ -175,7 +239,29 @@ class ApiService {
 
   Future<UserProfile> getProfile() async {
     if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getProfile();
+      // Return admin profile for dummy data
+      return UserProfile(
+        id: 1,
+        username: 'admin',
+        displayName: 'Admin User',
+        bio: 'Administrator account',
+        city: 'Jakarta',
+        country: 'Indonesia',
+        avatarUrl: null,
+        favoriteDistance: '10K',
+        emergencyContactName: 'Support',
+        emergencyContactPhone: '+62-812-3456-7890',
+        website: null,
+        instagramHandle: null,
+        stravaProfile: null,
+        birthDate: DateTime(1990, 1, 1),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        history: [],
+        achievements: [],
+        isSuperuser: true,
+        isStaff: true,
+      );
     }
     // Pastikan URL ini sudah ada di profile/urls.py
     final data = await get('/profile/api/profile/');
