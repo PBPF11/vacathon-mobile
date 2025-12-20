@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
@@ -30,6 +31,20 @@ class _ForumScreenState extends State<ForumScreen> {
   // For Create Dialog
   Event? _selectedEventForCreation;
 
+  // Filter State
+  String _searchQuery = '';
+  String _selectedSort = 'recent'; // recent, popular, oldest
+  Event? _selectedEventFilter;
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -59,10 +74,23 @@ class _ForumScreenState extends State<ForumScreen> {
 
     try {
       // 1. Load Events (for creating threads)
-      final eventsResponse = await _apiService.getEvents();
+      final eventsResponse = DummyDataService.USE_DUMMY_DATA
+          ? await DummyDataService.getEvents()
+          : await _apiService.getEvents();
 
-      // 2. Load ALL Threads
-      final threadsResponse = await _apiService.getThreads(); // No eventId = All
+      // 2. Load Threads with Filters
+      final threadsResponse = DummyDataService.USE_DUMMY_DATA
+          ? await DummyDataService.getThreads(
+              eventId: _selectedEventFilter?.id,
+              query: _searchQuery,
+              sort: _selectedSort,
+              page: 1,
+            )
+          : await _apiService.getThreads(
+              eventId: _selectedEventFilter?.id,
+              query: _searchQuery,
+              sort: _selectedSort,
+            );
 
       if (mounted) {
         setState(() {
@@ -104,7 +132,12 @@ class _ForumScreenState extends State<ForumScreen> {
         backgroundColor: primaryColor,
         elevation: 0,
       ),
-      body: _buildThreadList(),
+      body: Column(
+        children: [
+          _buildFilterBar(),
+          Expanded(child: _buildThreadList()),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showCreateThreadDialog,
         backgroundColor: primaryColor,
@@ -136,6 +169,211 @@ class _ForumScreenState extends State<ForumScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterBar() {
+    return Container(
+      color: whiteColor,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search topics...',
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: primaryColor),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+              onChanged: (value) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 500), () {
+                  setState(() => _searchQuery = value);
+                  _loadData();
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.filter_list, color: primaryColor),
+              onPressed: _showFilterModal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFilterModal() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter & Sort',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: darkColor,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _selectedEventFilter = null;
+                            _selectedSort = 'recent';
+                            _searchQuery = '';
+                            _searchController.clear();
+                          });
+                          _loadData();
+                          Navigator.pop(context);
+                        },
+                        child: const Text('Reset'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Event',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<Event?>(
+                    value:
+                        _selectedEventFilter != null &&
+                            _events.contains(_selectedEventFilter)
+                        ? _selectedEventFilter
+                        : null,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem<Event?>(
+                        value: null,
+                        child: Text('All Events'),
+                      ),
+                      ..._events.map(
+                        (e) => DropdownMenuItem<Event?>(
+                          value: e,
+                          child: Text(e.title, overflow: TextOverflow.ellipsis),
+                        ),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      setModalState(() => _selectedEventFilter = val);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Sort By',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedSort,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'recent',
+                        child: Text('Recently Active'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'latest',
+                        child: Text('Newest Threads'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'popular',
+                        child: Text('Most Replies'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => _selectedSort = val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Apply filters
+                        setState(() {}); // Trigger parent rebuild if needed
+                        _loadData();
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Apply Filters',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -191,7 +429,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        thread.eventTitle,
+                        "In ${_getEventTitle(thread)}",
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -380,7 +618,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Share your thoughts with the community',
+                          'Share tips, build hype, and help runners prepare for the big day.',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withOpacity(0.9),
@@ -456,7 +694,7 @@ class _ForumScreenState extends State<ForumScreen> {
                           controller: titleController,
                           style: const TextStyle(color: textColor),
                           decoration: InputDecoration(
-                            hintText: 'What is this regarding?',
+                            hintText: 'Thread title',
                             hintStyle: TextStyle(color: Colors.grey.shade400),
                             filled: true,
                             fillColor: bgColor,
@@ -501,7 +739,7 @@ class _ForumScreenState extends State<ForumScreen> {
                           style: const TextStyle(color: textColor),
                           maxLines: 5,
                           decoration: InputDecoration(
-                            hintText: 'Write your detailed message here...',
+                            hintText: 'Start the discussion...',
                             hintStyle: TextStyle(color: Colors.grey.shade400),
                             filled: true,
                             fillColor: bgColor,
@@ -611,6 +849,15 @@ class _ForumScreenState extends State<ForumScreen> {
 
   Future<void> _submitThread(Event event, String title, String body) async {
     try {
+      if (DummyDataService.USE_DUMMY_DATA) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thread creation disabled in dummy mode'),
+          ),
+        );
+        return;
+      }
+
       await _apiService.createThread(event.id, title, body);
       _loadData(); // Refresh all to show new thread
 
@@ -628,7 +875,7 @@ class _ForumScreenState extends State<ForumScreen> {
   }
 
   bool _canDelete(String authorUsername) {
-    if (_currentUser == null) return false;
+    if (DummyDataService.USE_DUMMY_DATA || _currentUser == null) return false;
     if (_currentUser!.isSuperuser || _currentUser!.isStaff) return true;
     return _currentUser!.username == authorUsername;
   }
@@ -685,6 +932,17 @@ class _ForumScreenState extends State<ForumScreen> {
       return '${difference.inMinutes}m ago';
     } else {
       return 'Just now';
+    }
+  }
+
+  String _getEventTitle(ForumThread thread) {
+    try {
+      final event = _events.firstWhere((e) => e.id == thread.eventId);
+      return event.title;
+    } catch (_) {
+      return int.tryParse(thread.eventTitle) != null
+          ? 'Event #${thread.eventTitle}'
+          : thread.eventTitle;
     }
   }
 }

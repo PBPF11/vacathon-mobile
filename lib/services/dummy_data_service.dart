@@ -259,6 +259,7 @@ class DummyDataService {
   static final List<ForumThread> _dummyThreads = [
     ForumThread(
       id: 1,
+      eventId: 1,
       eventTitle: 'Jakarta Marathon 2024',
       authorId: '1',
       authorUsername: 'testuser',
@@ -275,6 +276,7 @@ class DummyDataService {
     ),
     ForumThread(
       id: 2,
+      eventId: 1, // Also Jakarta Marathon
       eventTitle: 'Jakarta Marathon 2024',
       authorId: '2',
       authorUsername: 'runningfan',
@@ -568,8 +570,10 @@ class DummyDataService {
     return _dummyUserProfile.achievements;
   }
 
-  static Future<ThreadsResponse> getThreads(
-    int eventId, {
+  static Future<ThreadsResponse> getThreads({
+    int? eventId,
+    String? query,
+    String? sort,
     int page = 1,
     int pageSize = 20,
   }) async {
@@ -579,23 +583,52 @@ class DummyDataService {
 
     print('[DUMMY] getThreads called with eventId: $eventId, page: $page');
 
-    // Find event title from eventId
-    final event = _dummyEvents.firstWhere(
-      (e) => e.id == eventId,
-      orElse: () => _dummyEvents.first,
-    );
-    final eventThreads = _dummyThreads.where((t) => t.eventTitle == event.title).toList();
+    List<ForumThread> filteredThreads = _dummyThreads;
+
+    // Filter by Event
+    if (eventId != null) {
+      filteredThreads = filteredThreads
+          .where((t) => t.eventId == eventId)
+          .toList();
+    }
+
+    // Filter by Query
+    if (query != null && query.isNotEmpty) {
+      final q = query.toLowerCase();
+      filteredThreads = filteredThreads
+          .where(
+            (t) =>
+                t.title.toLowerCase().contains(q) ||
+                t.body.toLowerCase().contains(q),
+          )
+          .toList();
+    }
+
+    // Sort
+    if (sort != null) {
+      if (sort == 'popular') {
+        filteredThreads.sort((a, b) => b.viewCount.compareTo(a.viewCount));
+      } else if (sort == 'oldest') {
+        filteredThreads.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+      } else {
+        // recent/latest
+        filteredThreads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      }
+    } else {
+      filteredThreads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }
+
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
-    final paginatedThreads = eventThreads.sublist(
+    final paginatedThreads = filteredThreads.sublist(
       startIndex,
-      endIndex > eventThreads.length ? eventThreads.length : endIndex,
+      endIndex > filteredThreads.length ? filteredThreads.length : endIndex,
     );
 
     return ThreadsResponse(
       threads: paginatedThreads,
-      total: eventThreads.length,
-      hasNext: endIndex < eventThreads.length,
+      total: filteredThreads.length,
+      hasNext: endIndex < filteredThreads.length,
     );
   }
 
@@ -801,10 +834,18 @@ class DummyDataService {
       city: eventData['city'] ?? '',
       country: eventData['country'] ?? 'Indonesia',
       venue: eventData['venue'] ?? '',
-      startDate: DateTime.parse(eventData['start_date'] ?? DateTime.now().toIso8601String()),
-      endDate: DateTime.parse(eventData['end_date'] ?? DateTime.now().toIso8601String()),
-      registrationOpenDate: DateTime.parse(eventData['registration_open_date'] ?? DateTime.now().toIso8601String()),
-      registrationDeadline: DateTime.parse(eventData['registration_deadline'] ?? DateTime.now().toIso8601String()),
+      startDate: DateTime.parse(
+        eventData['start_date'] ?? DateTime.now().toIso8601String(),
+      ),
+      endDate: DateTime.parse(
+        eventData['end_date'] ?? DateTime.now().toIso8601String(),
+      ),
+      registrationOpenDate: DateTime.parse(
+        eventData['registration_open_date'] ?? DateTime.now().toIso8601String(),
+      ),
+      registrationDeadline: DateTime.parse(
+        eventData['registration_deadline'] ?? DateTime.now().toIso8601String(),
+      ),
       status: eventData['status'] ?? 'upcoming',
       popularityScore: eventData['popularity_score'] ?? 0,
       participantLimit: eventData['participant_limit'] ?? 1000,
@@ -820,7 +861,10 @@ class DummyDataService {
     return newEvent;
   }
 
-  static Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+  static Future<Event> updateEvent(
+    int eventId,
+    Map<String, dynamic> eventData,
+  ) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
@@ -841,13 +885,23 @@ class DummyDataService {
       city: eventData['city'] ?? existingEvent.city,
       country: eventData['country'] ?? existingEvent.country,
       venue: eventData['venue'] ?? existingEvent.venue,
-      startDate: eventData['start_date'] != null ? DateTime.parse(eventData['start_date']) : existingEvent.startDate,
-      endDate: eventData['end_date'] != null ? DateTime.parse(eventData['end_date']) : existingEvent.endDate,
-      registrationOpenDate: eventData['registration_open_date'] != null ? DateTime.parse(eventData['registration_open_date']) : existingEvent.registrationOpenDate,
-      registrationDeadline: eventData['registration_deadline'] != null ? DateTime.parse(eventData['registration_deadline']) : existingEvent.registrationDeadline,
+      startDate: eventData['start_date'] != null
+          ? DateTime.parse(eventData['start_date'])
+          : existingEvent.startDate,
+      endDate: eventData['end_date'] != null
+          ? DateTime.parse(eventData['end_date'])
+          : existingEvent.endDate,
+      registrationOpenDate: eventData['registration_open_date'] != null
+          ? DateTime.parse(eventData['registration_open_date'])
+          : existingEvent.registrationOpenDate,
+      registrationDeadline: eventData['registration_deadline'] != null
+          ? DateTime.parse(eventData['registration_deadline'])
+          : existingEvent.registrationDeadline,
       status: eventData['status'] ?? existingEvent.status,
-      popularityScore: eventData['popularity_score'] ?? existingEvent.popularityScore,
-      participantLimit: eventData['participant_limit'] ?? existingEvent.participantLimit,
+      popularityScore:
+          eventData['popularity_score'] ?? existingEvent.popularityScore,
+      participantLimit:
+          eventData['participant_limit'] ?? existingEvent.participantLimit,
       registeredCount: existingEvent.registeredCount,
       featured: eventData['featured'] ?? existingEvent.featured,
       bannerImage: eventData['banner_image'] ?? existingEvent.bannerImage,

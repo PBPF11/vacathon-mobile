@@ -1,6 +1,7 @@
 /// Represents a forum thread.
 class ForumThread {
   final int id;
+  final int eventId;
   final String eventTitle;
   final String authorId;
   final String authorUsername;
@@ -16,6 +17,7 @@ class ForumThread {
 
   ForumThread({
     required this.id,
+    required this.eventId,
     required this.eventTitle,
     required this.authorId,
     required this.authorUsername,
@@ -33,7 +35,12 @@ class ForumThread {
   factory ForumThread.fromJson(Map<String, dynamic> json) {
     return ForumThread(
       id: json['id'],
-      eventTitle: json['event']?.toString() ?? 'Unknown Event',
+      eventId: json['event'] is int
+          ? json['event']
+          : (int.tryParse(json['event'].toString()) ?? 0),
+      // Prefer explicit event_title if backend sends it, otherwise stringify event ID
+      eventTitle:
+          json['event_title'] ?? json['event']?.toString() ?? 'Unknown Event',
       authorId: json['author']?.toString() ?? '0',
       authorUsername: json['author_username'] ?? 'Unknown',
       title: json['title'] ?? '',
@@ -57,7 +64,8 @@ class ForumThread {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'event': eventTitle,
+      'event': eventId,
+      'event_title': eventTitle,
       'author': authorId,
       'author_username': authorUsername,
       'title': title,

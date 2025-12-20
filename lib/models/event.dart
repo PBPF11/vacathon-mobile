@@ -119,19 +119,23 @@ class Event {
       city: json['city'] ?? "",
       country: json['country'] ?? "",
       venue: json['venue'],
-      startDate: json['start_date'] != null 
-          ? DateTime.parse(json['start_date']) 
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'])
           : DateTime.now(),
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
-      registrationOpenDate: json['registration_open_date'] != null 
-          ? DateTime.parse(json['registration_open_date']) 
+      endDate: json['end_date'] != null
+          ? DateTime.parse(json['end_date'])
           : null,
-      registrationDeadline: json['registration_deadline'] != null 
-          ? DateTime.parse(json['registration_deadline']) 
+      registrationOpenDate: json['registration_open_date'] != null
+          ? DateTime.parse(json['registration_open_date'])
+          : null,
+      registrationDeadline: json['registration_deadline'] != null
+          ? DateTime.parse(json['registration_deadline'])
           : DateTime.now(),
       status: json['status'] ?? "",
       popularityScore: json['popularity_score'] ?? 0,
-      participantLimit: json['participant_limit'] == 0 ? 100 : (json['participant_limit'] ?? 100),
+      participantLimit: json['participant_limit'] == 0
+          ? 100
+          : (json['participant_limit'] ?? 100),
       registeredCount: json['registered_count'] ?? 0,
       featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
@@ -139,11 +143,11 @@ class Event {
       categories: (json['categories'] as List? ?? [])
           .map((i) => EventCategory.fromJson(i))
           .toList(),
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
           : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at']) 
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
           : DateTime.now(),
     );
   }
@@ -177,11 +181,12 @@ class Event {
   bool get isRegistrationOpen {
     final now = DateTime.now();
     final openDate = registrationOpenDate ?? now;
-    final hasCapacity = participantLimit == 0 || registeredCount < participantLimit;
+    final hasCapacity =
+        participantLimit == 0 || registeredCount < participantLimit;
     return openDate.isBefore(now) &&
-           now.isBefore(registrationDeadline) &&
-           status != 'completed' &&
-           hasCapacity;
+        now.isBefore(registrationDeadline) &&
+        status != 'completed' &&
+        hasCapacity;
   }
 
   /// Get capacity ratio (0-100)
@@ -204,7 +209,8 @@ class Event {
     if (DateTime.now().isAfter(registrationDeadline)) {
       return 'Registration deadline has passed.';
     }
-    if (registrationOpenDate != null && DateTime.now().isBefore(registrationOpenDate!)) {
+    if (registrationOpenDate != null &&
+        DateTime.now().isBefore(registrationOpenDate!)) {
       return 'Registration opens on ${registrationOpenDate!.month}/${registrationOpenDate!.day}/${registrationOpenDate!.year}.';
     }
     if (participantLimit > 0 && registeredCount >= participantLimit) {
@@ -230,6 +236,14 @@ class Event {
     }
     return '${formatter.format(startDate)} - ${formatter.format(endDate!)}';
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Event && runtimeType == other.runtimeType && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 /// Pagination info for events list
@@ -264,10 +278,7 @@ class EventsResponse {
   final List<Event> events;
   final EventPagination pagination;
 
-  EventsResponse({
-    required this.events,
-    required this.pagination,
-  });
+  EventsResponse({required this.events, required this.pagination});
 
   factory EventsResponse.fromJson(Map<String, dynamic> json) {
     return EventsResponse(

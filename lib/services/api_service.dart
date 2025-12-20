@@ -111,7 +111,7 @@ class ApiService {
           'display_name': 'Admin User',
           'is_superuser': true,
           'is_staff': true,
-        }
+        },
       };
     }
 
@@ -259,11 +259,22 @@ class ApiService {
 
   // --- Forum API ---
 
-  Future<ThreadsResponse> getThreads({int? eventId, int page = 1}) async {
+  Future<ThreadsResponse> getThreads({
+    int? eventId,
+    String? query,
+    String? sort,
+    int page = 1,
+  }) async {
     // Always use real API for forum threads
     final queryParams = {'page': page.toString()};
     if (eventId != null) {
       queryParams['event'] = eventId.toString();
+    }
+    if (query != null && query.isNotEmpty) {
+      queryParams['q'] = query;
+    }
+    if (sort != null && sort.isNotEmpty) {
+      queryParams['sort'] = sort;
     }
 
     final data = await get('/forum/api/threads/', queryParams: queryParams);
@@ -288,7 +299,7 @@ class ApiService {
     String body,
   ) async {
     // Endpoint yang baru kita buat di backend
-    final response = await post('/api/forum/threads/', {
+    final response = await post('/forum/api/threads/create/', {
       'event': eventId,
       'title': title,
       'body': body,
@@ -299,9 +310,9 @@ class ApiService {
   }
 
   Future<PostsResponse> getPosts(String threadSlug, {int page = 1}) async {
-    // Endpoint: /forum/threads/<thread_slug>/posts/
+    // Endpoint: /forum/api/threads/<thread_slug>/posts/
     final data = await get(
-      '/forum/threads/$threadSlug/posts/',
+      '/forum/api/threads/$threadSlug/posts/',
       queryParams: {'page': page.toString()},
     );
     return PostsResponse.fromJson(data);
@@ -315,10 +326,7 @@ class ApiService {
     // URL Backend: threads/<slug:slug>/posts/
     // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
     final url = '/forum/threads/$threadSlug/posts/';
-    final body = {
-      'content': content,
-      if (parentId != null) 'parent': parentId
-    };
+    final body = {'content': content, if (parentId != null) 'parent': parentId};
 
     final response = await post(url, body);
 
@@ -430,7 +438,9 @@ class ApiService {
 
   Future<EventRegistration> getRegistration(String referenceCode) async {
     try {
-      final data = await get('/register/account/registrations/$referenceCode/api/');
+      final data = await get(
+        '/register/account/registrations/$referenceCode/api/',
+      );
       return EventRegistration.fromJson(data);
     } catch (e) {
       print('[ERROR] Registration API failed, returning dummy data: $e');
@@ -511,12 +521,18 @@ class ApiService {
   }
 
   /// Get all participants for admin (paginated)
-  Future<Map<String, dynamic>> getAdminParticipants({int page = 1, int pageSize = 20}) async {
+  Future<Map<String, dynamic>> getAdminParticipants({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     try {
-      final data = await get('/admin/api/participants/', queryParams: {
-        'page': page.toString(),
-        'page_size': pageSize.toString(),
-      });
+      final data = await get(
+        '/admin/api/participants/',
+        queryParams: {
+          'page': page.toString(),
+          'page_size': pageSize.toString(),
+        },
+      );
       return data;
     } catch (e) {
       // Return dummy data if API not implemented
@@ -528,7 +544,7 @@ class ApiService {
           'has_next': false,
           'has_previous': false,
           'total': 0,
-        }
+        },
       };
     }
   }
@@ -544,13 +560,18 @@ class ApiService {
   }
 
   /// Create a new event (admin)
-  Future<Map<String, dynamic>> createEventAdmin(Map<String, dynamic> eventData) async {
+  Future<Map<String, dynamic>> createEventAdmin(
+    Map<String, dynamic> eventData,
+  ) async {
     final response = await post('/admin/api/events/', eventData);
     return response;
   }
 
   /// Update an event (admin)
-  Future<Map<String, dynamic>> updateEventAdmin(int eventId, Map<String, dynamic> eventData) async {
+  Future<Map<String, dynamic>> updateEventAdmin(
+    int eventId,
+    Map<String, dynamic> eventData,
+  ) async {
     final response = await put('/admin/api/events/$eventId/', eventData);
     return response;
   }
@@ -563,16 +584,14 @@ class ApiService {
   /// Get reported posts for moderation
   Future<Map<String, dynamic>> getReportedPosts({int page = 1}) async {
     try {
-      final data = await get('/admin/api/forum/reports/', queryParams: {
-        'page': page.toString(),
-      });
+      final data = await get(
+        '/admin/api/forum/reports/',
+        queryParams: {'page': page.toString()},
+      );
       return data;
     } catch (e) {
       // Return dummy data if API not implemented
-      return {
-        'results': [],
-        'total_reports': 0,
-      };
+      return {'results': [], 'total_reports': 0};
     }
   }
 
