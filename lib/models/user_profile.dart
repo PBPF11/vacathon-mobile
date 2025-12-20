@@ -29,49 +29,53 @@ class UserRaceHistory {
   });
 
   factory UserRaceHistory.fromJson(Map<String, dynamic> json) {
-    Event event;
-    if (json['event'] is Map<String, dynamic>) {
-      event = Event.fromJson(json['event']);
-    } else {
-      // Handle case where event is a string (title)
-      event = Event(
-        id: 0,
-        title: json['event'] ?? 'Unknown Event',
-        slug: json['event_slug'] ?? '',
-        description: '',
-        city: '',
-        country: '',
-        startDate: DateTime.parse(json['registration_date'] ?? DateTime.now().toIso8601String()),
-        registrationDeadline: DateTime.now(),
-        status: '',
-        popularityScore: 0,
-        participantLimit: 0,
-        registeredCount: 0,
-        featured: false,
-        categories: [],
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-    }
+  return UserRaceHistory(
+    id: json['id'] ?? 0,
 
-    return UserRaceHistory(
-      id: json['id'] ?? 0,
-      event: event,
-      category: json['category']?.toString() ?? '',
-      registrationDate: DateTime.parse(json['registration_date']),
-      status: json['status'] ?? 'pending',
-      bibNumber: json['bib_number'],
-      finishTime: json['finish_time'] != null
-          ? Duration(seconds: json['finish_time'] is int ? json['finish_time'] : 0)
-          : null,
-      medalAwarded: json['medal_awarded'] ?? false,
-      certificateUrl: json['certificate_url'],
-      notes: json['notes'],
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : DateTime.now(),
-    );
-  }
+    // Logic untuk handle jika 'event' cuma String (dari history profile)
+    event: json['event'] is String
+        ? Event(
+            id: 0,
+            title: json['event'], // Nama event dari JSON
+            slug: json['event_slug'] ?? '',
+            description: '',
+            city: json['city'] ?? '', // Ambil city dari level history jika ada
+            country: json['country'] ?? '',
+            startDate: json['registration_date'] != null
+                ? DateTime.parse(json['registration_date'])
+                : DateTime.now(),
+            registrationDeadline: DateTime.now(),
+            status: json['status'] ?? '',
+            popularityScore: 0,
+            participantLimit: 0,
+            registeredCount: 0,
+            featured: false,
+            categories: [], // Kosongkan saja karena di history biasanya nggak lengkap
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          )
+        : Event.fromJson(json['event']),
+
+    category: json['category']?.toString() ?? '',
+    registrationDate: json['registration_date'] != null
+        ? DateTime.parse(json['registration_date'])
+        : DateTime.now(),
+    status: json['status'] ?? 'pending',
+    bibNumber: json['bib_number'],
+
+    // Handle Duration dengan aman
+    finishTime: (json['finish_time'] != null && json['finish_time'] is int)
+        ? Duration(seconds: json['finish_time'])
+        : null,
+
+    medalAwarded: json['medal_awarded'] ?? false,
+    certificateUrl: json['certificate_url'],
+    notes: json['notes'],
+    updatedAt: json['updated_at'] != null
+        ? DateTime.parse(json['updated_at'])
+        : DateTime.now(),
+  );
+}
 
   Map<String, dynamic> toJson() {
     return {

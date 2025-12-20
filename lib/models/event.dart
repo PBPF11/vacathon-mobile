@@ -98,33 +98,38 @@ class Event {
 
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
-      id: json['id'],
-      title: json['title'] ?? '',
-      slug: json['slug'] ?? '',
-      description: json['description'] ?? '',
-      city: json['city'] ?? '',
-      country: json['country'] ?? '',
+      id: json['id'] ?? 0,
+      title: json['title'] ?? "",
+      slug: json['slug'] ?? "",
+      description: json['description'] ?? "",
+      city: json['city'] ?? "",
+      country: json['country'] ?? "",
       venue: json['venue'],
-      startDate: Event._parseDate(json['start_date']),
-      endDate: json['end_date'] != null ? Event._parseDate(json['end_date']) : null,
-      registrationOpenDate: json['registration_open_date'] != null
-          ? Event._parseDate(json['registration_open_date'])
-          : Event._parseDate(json['start_date']),
-      registrationDeadline: Event._parseDate(json['registration_deadline']),
-      status: json['status'] ?? 'upcoming',
+      startDate: json['start_date'] != null 
+          ? DateTime.parse(json['start_date']) 
+          : DateTime.now(),
+      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
+      registrationOpenDate: json['registration_open_date'] != null 
+          ? DateTime.parse(json['registration_open_date']) 
+          : null,
+      registrationDeadline: json['registration_deadline'] != null 
+          ? DateTime.parse(json['registration_deadline']) 
+          : DateTime.now(),
+      status: json['status'] ?? "",
       popularityScore: json['popularity_score'] ?? 0,
       participantLimit: json['participant_limit'] == 0 ? 100 : (json['participant_limit'] ?? 100),
       registeredCount: json['registered_count'] ?? 0,
       featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
-      categories: (json['categories'] as List?)
-          ?.map((cat) => EventCategory.fromJson(cat))
-          ?.toList() ?? [],
-      createdAt: json['created_at'] != null
-          ? Event._parseDate(json['created_at'])
+      // Handle list categories biar gak null error
+      categories: (json['categories'] as List? ?? [])
+          .map((i) => EventCategory.fromJson(i))
+          .toList(),
+      createdAt: json['created_at'] != null 
+          ? DateTime.parse(json['created_at']) 
           : DateTime.now(),
-      updatedAt: json['updated_at'] != null
-          ? Event._parseDate(json['updated_at'])
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at']) 
           : DateTime.now(),
     );
   }

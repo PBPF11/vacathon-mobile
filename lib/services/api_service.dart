@@ -400,7 +400,7 @@ class ApiService {
   }
 
   Future<EventRegistration> getRegistration(String referenceCode) async {
-    final data = await get('/profile/api/registrations/$referenceCode/');
+    final data = await get('/register/account/registrations/$referenceCode/api/');
     return EventRegistration.fromJson(data);
   }
 
@@ -419,6 +419,10 @@ class ApiService {
     final query = {'page': page.toString()};
     if (unreadOnly) query['unread'] = 'true';
     final data = await get('/notifications/api/', queryParams: query);
+    // TAMBAHKAN BARIS INI:
+  print('--- DATA DARI DJANGO ---');
+  print(data); 
+  print('------------------------');
     return NotificationsResponse.fromJson(data);
   }
 
