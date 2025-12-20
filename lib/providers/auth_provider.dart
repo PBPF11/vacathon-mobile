@@ -25,18 +25,21 @@ class AuthProvider with ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
 
   /// Cek status login saat aplikasi dimulai
+  /// Cek status login saat aplikasi dimulai
   Future<void> _checkLoginStatus() async {
-    // CookieRequest menyimpan status login (cookies) secara otomatis.
-    // Jika loggedIn bernilai true, kita coba ambil data profil untuk memastikan session valid.
-    if (request.loggedIn) {
-      try {
-        await loadProfile();
+    // Attempt to load profile to check if session cookies are valid.
+    // This handles cases where Flutter hot restarts (clearing memory)
+    // but the browser still has valid session cookies.
+    try {
+      await loadProfile();
+      if (_userProfile != null) {
         _isAuthenticated = true;
-      } catch (e) {
-        // Jika gagal ambil profil (misal session expired), anggap belum login
+        // Opsional: set request.loggedIn = true jika library mengizinkan,
+        // tapi _isAuthenticated yang kita pakai untuk state UI.
+      } else {
         _isAuthenticated = false;
       }
-    } else {
+    } catch (e) {
       _isAuthenticated = false;
     }
     notifyListeners();

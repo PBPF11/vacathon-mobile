@@ -12,7 +12,8 @@ class DummyDataService {
       id: 1,
       title: 'Jakarta Marathon 2024',
       slug: 'jakarta-marathon-2024',
-      description: 'Experience the vibrant city of Jakarta through this challenging marathon route featuring iconic landmarks and urban landscapes.',
+      description:
+          'Experience the vibrant city of Jakarta through this challenging marathon route featuring iconic landmarks and urban landscapes.',
       city: 'Jakarta',
       country: 'Indonesia',
       venue: 'National Monument',
@@ -25,12 +26,33 @@ class DummyDataService {
       participantLimit: 5000,
       registeredCount: 3247,
       featured: true,
-      bannerImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
+      bannerImage:
+          'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
       categories: [
-        EventCategory(id: 1, name: 'full_marathon', distanceKm: 42.2, displayName: '42K Full Marathon'),
-        EventCategory(id: 2, name: 'half_marathon', distanceKm: 21.1, displayName: '21K Half Marathon'),
-        EventCategory(id: 3, name: '10k_run', distanceKm: 10.0, displayName: '10K Run'),
-        EventCategory(id: 4, name: '5k_fun_run', distanceKm: 5.0, displayName: '5K Fun Run'),
+        EventCategory(
+          id: 1,
+          name: 'full_marathon',
+          distanceKm: 42.2,
+          displayName: '42K Full Marathon',
+        ),
+        EventCategory(
+          id: 2,
+          name: 'half_marathon',
+          distanceKm: 21.1,
+          displayName: '21K Half Marathon',
+        ),
+        EventCategory(
+          id: 3,
+          name: '10k_run',
+          distanceKm: 10.0,
+          displayName: '10K Run',
+        ),
+        EventCategory(
+          id: 4,
+          name: '5k_fun_run',
+          distanceKm: 5.0,
+          displayName: '5K Fun Run',
+        ),
       ],
       createdAt: DateTime(2024, 8, 1),
       updatedAt: DateTime(2024, 10, 15),
@@ -39,7 +61,8 @@ class DummyDataService {
       id: 2,
       title: 'Bali International Marathon',
       slug: 'bali-marathon-2024',
-      description: 'Run through the paradise island of Bali with stunning beach views and tropical landscapes.',
+      description:
+          'Run through the paradise island of Bali with stunning beach views and tropical landscapes.',
       city: 'Bali',
       country: 'Indonesia',
       venue: 'Sanur Beach',
@@ -52,11 +75,27 @@ class DummyDataService {
       participantLimit: 3000,
       registeredCount: 2156,
       featured: true,
-      bannerImage: 'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800',
+      bannerImage:
+          'https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?w=800',
       categories: [
-        EventCategory(id: 1, name: 'full_marathon', distanceKm: 42.2, displayName: '42K Full Marathon'),
-        EventCategory(id: 2, name: 'half_marathon', distanceKm: 21.1, displayName: '21K Half Marathon'),
-        EventCategory(id: 3, name: '10k_run', distanceKm: 10.0, displayName: '10K Run'),
+        EventCategory(
+          id: 1,
+          name: 'full_marathon',
+          distanceKm: 42.2,
+          displayName: '42K Full Marathon',
+        ),
+        EventCategory(
+          id: 2,
+          name: 'half_marathon',
+          distanceKm: 21.1,
+          displayName: '21K Half Marathon',
+        ),
+        EventCategory(
+          id: 3,
+          name: '10k_run',
+          distanceKm: 10.0,
+          displayName: '10K Run',
+        ),
       ],
       createdAt: DateTime(2024, 8, 15),
       updatedAt: DateTime(2024, 10, 20),
@@ -65,7 +104,8 @@ class DummyDataService {
       id: 3,
       title: 'Bandung Mountain Trail Run',
       slug: 'bandung-trail-2024',
-      description: 'Challenge yourself with this scenic trail run through the mountains of Bandung.',
+      description:
+          'Challenge yourself with this scenic trail run through the mountains of Bandung.',
       city: 'Bandung',
       country: 'Indonesia',
       venue: 'Dago Pakar',
@@ -78,11 +118,27 @@ class DummyDataService {
       participantLimit: 800,
       registeredCount: 623,
       featured: false,
-      bannerImage: 'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800',
+      bannerImage:
+          'https://images.unsplash.com/photo-1551632811-561732d1e306?w=800',
       categories: [
-        EventCategory(id: 2, name: 'half_marathon', distanceKm: 21.1, displayName: '21K Trail Run'),
-        EventCategory(id: 3, name: '10k_run', distanceKm: 10.0, displayName: '10K Trail Run'),
-        EventCategory(id: 4, name: '5k_fun_run', distanceKm: 5.0, displayName: '5K Fun Run'),
+        EventCategory(
+          id: 2,
+          name: 'half_marathon',
+          distanceKm: 21.1,
+          displayName: '21K Trail Run',
+        ),
+        EventCategory(
+          id: 3,
+          name: '10k_run',
+          distanceKm: 10.0,
+          displayName: '10K Trail Run',
+        ),
+        EventCategory(
+          id: 4,
+          name: '5k_fun_run',
+          distanceKm: 5.0,
+          displayName: '5K Fun Run',
+        ),
       ],
       createdAt: DateTime(2024, 7, 1),
       updatedAt: DateTime(2024, 10, 10),
@@ -91,7 +147,8 @@ class DummyDataService {
       id: 4,
       title: 'Surabaya Night Run 2023',
       slug: 'surabaya-night-run-2023',
-      description: 'Experience the magic of Surabaya at night with this illuminated city marathon.',
+      description:
+          'Experience the magic of Surabaya at night with this illuminated city marathon.',
       city: 'Surabaya',
       country: 'Indonesia',
       venue: 'Tugu Pahlawan',
@@ -104,10 +161,21 @@ class DummyDataService {
       participantLimit: 2000,
       registeredCount: 1876,
       featured: false,
-      bannerImage: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
+      bannerImage:
+          'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800',
       categories: [
-        EventCategory(id: 3, name: '10k_run', distanceKm: 10.0, displayName: '10K Night Run'),
-        EventCategory(id: 4, name: '5k_fun_run', distanceKm: 5.0, displayName: '5K Fun Run'),
+        EventCategory(
+          id: 3,
+          name: '10k_run',
+          distanceKm: 10.0,
+          displayName: '10K Night Run',
+        ),
+        EventCategory(
+          id: 4,
+          name: '5k_fun_run',
+          distanceKm: 5.0,
+          displayName: '5K Fun Run',
+        ),
       ],
       createdAt: DateTime(2023, 9, 1),
       updatedAt: DateTime(2023, 12, 16),
@@ -119,10 +187,12 @@ class DummyDataService {
     id: 1,
     username: 'testuser',
     displayName: 'Test Runner',
-    bio: 'Passionate runner who loves exploring new routes and challenging myself. Marathon enthusiast with a love for adventure!',
+    bio:
+        'Passionate runner who loves exploring new routes and challenging myself. Marathon enthusiast with a love for adventure!',
     city: 'Jakarta',
     country: 'Indonesia',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+    avatarUrl:
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
     favoriteDistance: '21K',
     emergencyContactName: 'John Doe',
     emergencyContactPhone: '+62-812-3456-7890',
@@ -194,7 +264,8 @@ class DummyDataService {
       authorUsername: 'testuser',
       title: 'Training tips for Jakarta Marathon',
       slug: 'training-tips-jakarta-marathon',
-      body: 'Hi everyone! I\'m preparing for the Jakarta Marathon and would love to hear your training tips. What\'s your weekly mileage? Any specific workouts you recommend?',
+      body:
+          'Hi everyone! I\'m preparing for the Jakarta Marathon and would love to hear your training tips. What\'s your weekly mileage? Any specific workouts you recommend?',
       createdAt: DateTime(2024, 10, 1),
       updatedAt: DateTime(2024, 10, 5),
       lastActivityAt: DateTime(2024, 10, 5),
@@ -209,7 +280,8 @@ class DummyDataService {
       authorUsername: 'runningfan',
       title: 'Accommodation recommendations near start line',
       slug: 'accommodation-jakarta-marathon',
-      body: 'Looking for good hotels or Airbnbs near the National Monument. Any recommendations for budget-friendly options?',
+      body:
+          'Looking for good hotels or Airbnbs near the National Monument. Any recommendations for budget-friendly options?',
       createdAt: DateTime(2024, 10, 3),
       updatedAt: DateTime(2024, 10, 4),
       lastActivityAt: DateTime(2024, 10, 4),
@@ -226,7 +298,8 @@ class DummyDataService {
       authorId: '2',
       authorUsername: 'runningfan',
       parentId: null,
-      content: 'I recommend starting with a base of 20-30km per week and gradually increasing. Hill training is crucial for Jakarta\'s terrain!',
+      content:
+          'I recommend starting with a base of 20-30km per week and gradually increasing. Hill training is crucial for Jakarta\'s terrain!',
       createdAt: DateTime(2024, 10, 1, 14, 30),
       updatedAt: DateTime(2024, 10, 1, 14, 30),
       likesCount: 12,
@@ -238,7 +311,8 @@ class DummyDataService {
       authorId: '3',
       authorUsername: 'marathoner',
       parentId: 1,
-      content: 'Agreed! Also don\'t forget about speed work. Intervals on Wednesdays really helped me.',
+      content:
+          'Agreed! Also don\'t forget about speed work. Intervals on Wednesdays really helped me.',
       createdAt: DateTime(2024, 10, 2, 9, 15),
       updatedAt: DateTime(2024, 10, 2, 9, 15),
       likesCount: 8,
@@ -278,7 +352,8 @@ class DummyDataService {
       id: 1,
       recipientId: 1,
       title: 'Registration Confirmed',
-      message: 'Your registration for Jakarta Marathon 2024 has been confirmed. Your BIB number is BIB-3247.',
+      message:
+          'Your registration for Jakarta Marathon 2024 has been confirmed. Your BIB number is BIB-3247.',
       category: 'registration',
       linkUrl: '/registrations/VAC-ABC123DEF',
       isRead: false,
@@ -289,7 +364,8 @@ class DummyDataService {
       id: 2,
       recipientId: 1,
       title: 'Event Reminder',
-      message: 'Jakarta Marathon 2024 is coming up in 10 days! Don\'t forget to pick up your race kit.',
+      message:
+          'Jakarta Marathon 2024 is coming up in 10 days! Don\'t forget to pick up your race kit.',
       category: 'event',
       linkUrl: '/events/jakarta-marathon-2024',
       isRead: true,
@@ -317,25 +393,38 @@ class DummyDataService {
 
     if (filters != null) {
       if (filters['status'] != null) {
-        filteredEvents = filteredEvents.where((e) => e.status == filters['status']).toList();
+        filteredEvents = filteredEvents
+            .where((e) => e.status == filters['status'])
+            .toList();
       }
       if (filters['city'] != null) {
-        filteredEvents = filteredEvents.where((e) =>
-            e.city.toLowerCase().contains(filters['city']!.toLowerCase())).toList();
+        filteredEvents = filteredEvents
+            .where(
+              (e) =>
+                  e.city.toLowerCase().contains(filters['city']!.toLowerCase()),
+            )
+            .toList();
       }
       if (filters['distance'] != null) {
         final distance = double.tryParse(filters['distance']!);
         if (distance != null) {
-          filteredEvents = filteredEvents.where((e) =>
-              e.categories.any((cat) => cat.distanceKm == distance)).toList();
+          filteredEvents = filteredEvents
+              .where(
+                (e) => e.categories.any((cat) => cat.distanceKm == distance),
+              )
+              .toList();
         }
       }
       if (filters['search'] != null) {
         final query = filters['search']!.toLowerCase();
-        filteredEvents = filteredEvents.where((e) =>
-        e.title.toLowerCase().contains(query) ||
-            e.description.toLowerCase().contains(query) ||
-            e.city.toLowerCase().contains(query)).toList();
+        filteredEvents = filteredEvents
+            .where(
+              (e) =>
+                  e.title.toLowerCase().contains(query) ||
+                  e.description.toLowerCase().contains(query) ||
+                  e.city.toLowerCase().contains(query),
+            )
+            .toList();
       }
     }
 
@@ -422,7 +511,8 @@ class DummyDataService {
           eventId: eventId,
           order: 1,
           title: 'City Center Loop',
-          description: 'Starting from National Monument, running through the main city center with moderate traffic.',
+          description:
+              'Starting from National Monument, running through the main city center with moderate traffic.',
           distanceKm: 10.0,
           elevationGain: 50,
         ),
@@ -431,7 +521,8 @@ class DummyDataService {
           eventId: eventId,
           order: 2,
           title: 'Riverside Path',
-          description: 'Scenic run along the river with beautiful views and shade from trees.',
+          description:
+              'Scenic run along the river with beautiful views and shade from trees.',
           distanceKm: 15.0,
           elevationGain: 25,
         ),
@@ -477,7 +568,11 @@ class DummyDataService {
     return _dummyUserProfile.achievements;
   }
 
-  static Future<ThreadsResponse> getThreads(int eventId, {int page = 1, int pageSize = 20}) async {
+  static Future<ThreadsResponse> getThreads(
+    int eventId, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
@@ -499,14 +594,26 @@ class DummyDataService {
     );
   }
 
-  static Future<PostsResponse> getPosts(int threadId, {int page = 1, int pageSize = 20}) async {
+  static Future<PostsResponse> getPosts(
+    String threadSlug, {
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
 
-    print('[DUMMY] getPosts called with threadId: $threadId, page: $page');
+    print('[DUMMY] getPosts called with threadSlug: $threadSlug, page: $page');
 
-    final threadPosts = _dummyPosts.where((p) => p.threadId == threadId).toList();
+    // Find thread ID from slug
+    final thread = _dummyThreads.firstWhere(
+      (t) => t.slug == threadSlug,
+      orElse: () => _dummyThreads[0],
+    );
+
+    final threadPosts = _dummyPosts
+        .where((p) => p.threadId == thread.id)
+        .toList();
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
     final paginatedPosts = threadPosts.sublist(
@@ -521,7 +628,10 @@ class DummyDataService {
     );
   }
 
-  static Future<RegistrationsResponse> getMyRegistrations({int page = 1, int pageSize = 20}) async {
+  static Future<RegistrationsResponse> getMyRegistrations({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
@@ -532,7 +642,9 @@ class DummyDataService {
     final endIndex = startIndex + pageSize;
     final paginatedRegistrations = _dummyRegistrations.sublist(
       startIndex,
-      endIndex > _dummyRegistrations.length ? _dummyRegistrations.length : endIndex,
+      endIndex > _dummyRegistrations.length
+          ? _dummyRegistrations.length
+          : endIndex,
     );
 
     return RegistrationsResponse(
@@ -545,24 +657,30 @@ class DummyDataService {
   static Future<NotificationsResponse> getNotifications({
     int page = 1,
     int pageSize = 20,
-    bool unreadOnly = false
+    bool unreadOnly = false,
   }) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
 
-    print('[DUMMY] getNotifications called with page: $page, unreadOnly: $unreadOnly');
+    print(
+      '[DUMMY] getNotifications called with page: $page, unreadOnly: $unreadOnly',
+    );
 
     List<Notification> filteredNotifications = List.from(_dummyNotifications);
     if (unreadOnly) {
-      filteredNotifications = filteredNotifications.where((n) => !n.isRead).toList();
+      filteredNotifications = filteredNotifications
+          .where((n) => !n.isRead)
+          .toList();
     }
 
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
     final paginatedNotifications = filteredNotifications.sublist(
       startIndex,
-      endIndex > filteredNotifications.length ? filteredNotifications.length : endIndex,
+      endIndex > filteredNotifications.length
+          ? filteredNotifications.length
+          : endIndex,
     );
 
     return NotificationsResponse(
@@ -595,12 +713,17 @@ class DummyDataService {
   }
 
   // Registration functionality
-  static Future<EventRegistration> registerForEvent(int eventId, Map<String, dynamic> registrationData) async {
+  static Future<EventRegistration> registerForEvent(
+    int eventId,
+    Map<String, dynamic> registrationData,
+  ) async {
     if (!USE_DUMMY_DATA) {
       throw UnimplementedError('Real API not implemented');
     }
 
-    print('[DUMMY] registerForEvent called with eventId: $eventId, data: $registrationData');
+    print(
+      '[DUMMY] registerForEvent called with eventId: $eventId, data: $registrationData',
+    );
 
     // Find the event
     final event = _dummyEvents.firstWhere((e) => e.id == eventId);
@@ -612,9 +735,15 @@ class DummyDataService {
       userId: 1, // Assuming current user ID
       userUsername: 'testuser',
       event: event,
-      categoryId: registrationData['category'] != null ? int.parse(registrationData['category']) : null,
+      categoryId: registrationData['category'] != null
+          ? int.parse(registrationData['category'])
+          : null,
       categoryDisplayName: registrationData['category'] != null
-          ? event.categories.firstWhere((c) => c.id == int.parse(registrationData['category'])).displayName
+          ? event.categories
+                .firstWhere(
+                  (c) => c.id == int.parse(registrationData['category']),
+                )
+                .displayName
           : null,
       distanceLabel: registrationData['distance_label'] ?? '',
       phoneNumber: registrationData['phone_number'],

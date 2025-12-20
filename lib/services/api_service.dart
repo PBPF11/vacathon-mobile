@@ -16,7 +16,9 @@ class ApiService {
 
   static ApiService get instance {
     if (_instance == null) {
-      throw Exception('ApiService not initialized. Call ApiService.initialize() first.');
+      throw Exception(
+        'ApiService not initialized. Call ApiService.initialize() first.',
+      );
     }
     return _instance!;
   }
@@ -34,9 +36,9 @@ class ApiService {
 
   /// Helper untuk GET request
   Future<dynamic> get(
-      String endpoint, {
-        Map<String, String>? queryParams,
-      }) async {
+    String endpoint, {
+    Map<String, String>? queryParams,
+  }) async {
     String url = '$baseUrl$endpoint';
     if (queryParams != null && queryParams.isNotEmpty) {
       url += '?' + Uri(queryParameters: queryParams).query;
@@ -108,9 +110,9 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(
-      String username,
-      String password,
-      ) async {
+    String username,
+    String password,
+  ) async {
     // Panggil endpoint register di Django
     final response = await post('/profile/auth/register/', {
       'username': username,
@@ -208,8 +210,8 @@ class ApiService {
   }
 
   Future<RunnerAchievement> addAchievement(
-      Map<String, dynamic> achievementData,
-      ) async {
+    Map<String, dynamic> achievementData,
+  ) async {
     final data = await post('/profile/api/achievements/', achievementData);
     return RunnerAchievement.fromJson(data);
   }
@@ -220,22 +222,40 @@ class ApiService {
 
   // --- Forum API ---
 
-  Future<ThreadsResponse> getThreads(int eventId, {int page = 1}) async {
+  Future<ThreadsResponse> getThreads({int? eventId, int page = 1}) async {
     if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getThreads(eventId, page: page);
+      // Dummy data service might demand eventId for now, but we can update it later.
+      // For now, if eventId is null, we might need a dummy method to get all threads.
+      // Assuming dummy service expects non-null, we fallback to 1 or handle inside dummy.
+      return DummyDataService.getThreads(eventId ?? 1, page: page);
     }
-    final data = await get(
-      '/api/forum/threads/',
-      queryParams: {'event': eventId.toString(), 'page': page.toString()},
-    );
+
+    final queryParams = {'page': page.toString()};
+    if (eventId != null) {
+      queryParams['event'] = eventId.toString();
+    }
+
+    final data = await get('/forum/api/threads/', queryParams: queryParams);
     return ThreadsResponse.fromJson(data);
   }
 
+  Future<ForumThread> getThreadDetail(String slug) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      throw UnimplementedError("Dummy data for single thread not implemented");
+    }
+    // Add cache buster to prevent browser caching
+    final data = await get(
+      '/forum/api/threads/$slug/',
+      queryParams: {'_': DateTime.now().millisecondsSinceEpoch.toString()},
+    );
+    return ForumThread.fromJson(data);
+  }
+
   Future<ForumThread> createThread(
-      int eventId,
-      String title,
-      String body,
-      ) async {
+    int eventId,
+    String title,
+    String body,
+  ) async {
     // Endpoint yang baru kita buat di backend
     final response = await post('/api/forum/threads/', {
       'event': eventId,
@@ -257,25 +277,43 @@ class ApiService {
   }
 
   Future<ForumPost> createPost(
-      int threadId,
-      String content, {
-        int? parentId,
-      }) async {
-    // URL Backend: /api/forum/posts/
+    String threadSlug,
+    String content, {
+    int? parentId,
+  }) async {
+    // URL Backend: threads/<slug:slug>/posts/
+    // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
+    final url = '/forum/threads/$threadSlug/posts/';
     final body = {
-      'thread': threadId,
       'content': content,
       if (parentId != null) 'parent': parentId
     };
 
-    final response = await post('/api/forum/posts/', body);
+    final response = await post(url, body);
 
     // Backend returns the created post object
     return ForumPost.fromJson(response);
   }
 
   Future<void> likePost(int postId) async {
-    await post('/api/forum/posts/$postId/like/', {});
+    // OLD: await post('/profile/api/forum/posts/$postId/like/', {});
+    // NEW Check urls.py: path("posts/<int:post_id>/like/", toggle_like, name="post-like")
+    // Prefix 'forum/' -> '/forum/posts/$postId/like/'
+    await post('/forum/posts/$postId/like/', {});
+  }
+
+  Future<void> deleteThread(String slug) async {
+    final response = await post('/forum/api/threads/$slug/delete/', {});
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? 'Failed to delete thread');
+    }
+  }
+
+  Future<void> deletePost(int postId) async {
+    final response = await post('/forum/api/posts/$postId/delete/', {});
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? 'Failed to delete post');
+    }
   }
 
   // --- Registrations API ---
@@ -293,10 +331,10 @@ class ApiService {
 
   // UBAH signature method ini
   Future<EventRegistration> registerForEvent(
-      String eventSlug, // GANTI int eventId menjadi String eventSlug
-      int categoryId,
-      Map<String, dynamic> registrationData,
-      ) async {
+    String eventSlug, // GANTI int eventId menjadi String eventSlug
+    int categoryId,
+    Map<String, dynamic> registrationData,
+  ) async {
     // Sesuaikan URL dengan backend: vacathon-be/registrations/urls.py
     // path("events/<slug:slug>/register/ajax/", register_ajax, name="register-ajax")
     // URL penuh: /register/events/<slug>/register/ajax/
