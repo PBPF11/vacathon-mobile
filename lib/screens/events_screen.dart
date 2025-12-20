@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 import 'event_detail_screen.dart';
@@ -55,7 +57,7 @@ class _EventsScreenState extends State<EventsScreen> {
       _errorMessage = '';
     });
 
-    print('[DEBUG] Loading events...');
+    print('[DEBUG] Loading admin events...');
     try {
       final filters = <String, String>{};
       if (_searchController.text.isNotEmpty) {
@@ -74,11 +76,11 @@ class _EventsScreenState extends State<EventsScreen> {
       print('[DEBUG] Filters: $filters');
       if (DummyDataService.USE_DUMMY_DATA) {
         print('[DEBUG] Using dummy data');
-        _eventsResponse = await DummyDataService.getEvents(filters: filters);
+        _eventsResponse = await DummyDataService.getAdminEvents(filters: filters);
         print('[DEBUG] Dummy data loaded: ${_eventsResponse?.events.length} events');
       } else {
         print('[DEBUG] Calling API');
-        _eventsResponse = await _apiService.getEvents(filters: filters);
+        _eventsResponse = await _apiService.getAdminEvents(filters: filters);
         print('[DEBUG] API data loaded: ${_eventsResponse?.events.length} events');
       }
       _deriveFilterOptions();
@@ -118,10 +120,25 @@ class _EventsScreenState extends State<EventsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAdmin = authProvider.userProfile?.isSuperuser == true || authProvider.userProfile?.isStaff == true;
+
+    if (!isAdmin) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Access Denied'),
+          backgroundColor: primaryColor,
+        ),
+        body: const Center(
+          child: Text('You do not have permission to access this page.'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Events'),
+        title: const Text('Manage Events'),
         backgroundColor: primaryColor,
         elevation: 0,
         actions: [
@@ -175,6 +192,293 @@ class _EventsScreenState extends State<EventsScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addNewEvent,
+        backgroundColor: primaryColor,
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  void _addNewEvent() {
+    _showEventDialog();
+  }
+
+  void _editEvent(Event event) {
+    _showEventDialog(event: event);
+  }
+
+  void _showEventDialog({Event? event}) {
+    final isEditing = event != null;
+
+    // Form controllers
+    final titleController = TextEditingController(text: event?.title ?? '');
+    final descriptionController = TextEditingController(text: event?.description ?? '');
+    final cityController = TextEditingController(text: event?.city ?? '');
+    final popularityController = TextEditingController(text: event?.popularityScore.toString() ?? '0');
+
+    // Date variables
+    DateTime? startDate = event?.startDate ?? DateTime.now();
+    DateTime? endDate = event?.endDate ?? DateTime.now().add(const Duration(days: 1));
+    DateTime? registrationDeadline = event?.registrationDeadline ?? DateTime.now().add(const Duration(days: 30));
+    String status = event?.status ?? 'upcoming';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text(isEditing ? 'Edit Event' : 'Add New Event'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(
+                        labelText: 'Description',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: cityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Start Date
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setState(() => startDate = picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Start Date',
+                          border: OutlineInputBorder(),
+                        ),
+                        child: Text(
+                          startDate != null ? DateFormat('yyyy-MM-dd').format(startDate!) : 'Select date',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // End Date
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: endDate ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setState(() => endDate = picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'End Date',
+                          border: OutlineInputBorder(),
+                        ),
+                        child: Text(
+                          endDate != null ? DateFormat('yyyy-MM-dd').format(endDate!) : 'Select date',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Registration Deadline
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: registrationDeadline ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setState(() => registrationDeadline = picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Registration Deadline',
+                          border: OutlineInputBorder(),
+                        ),
+                        child: Text(
+                          registrationDeadline != null ? DateFormat('yyyy-MM-dd').format(registrationDeadline!) : 'Select date',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Status
+                    DropdownButtonFormField<String>(
+                      value: status,
+                      decoration: const InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['upcoming', 'ongoing', 'completed'].map((s) {
+                        return DropdownMenuItem(
+                          value: s,
+                          child: Text(s.toUpperCase()),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => status = value);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: popularityController,
+                      decoration: const InputDecoration(
+                        labelText: 'Popularity Score',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () async {
+                    // Validate and save
+                    if (titleController.text.isEmpty ||
+                        descriptionController.text.isEmpty ||
+                        cityController.text.isEmpty ||
+                        startDate == null ||
+                        endDate == null ||
+                        registrationDeadline == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please fill all required fields')),
+                      );
+                      return;
+                    }
+
+                    final popularityScore = int.tryParse(popularityController.text) ?? 0;
+
+                    final eventData = {
+                      'title': titleController.text,
+                      'description': descriptionController.text,
+                      'city': cityController.text,
+                      'country': 'Indonesia', // Default
+                      'start_date': startDate!.toIso8601String(),
+                      'end_date': endDate!.toIso8601String(),
+                      'registration_open_date': startDate!.subtract(const Duration(days: 30)).toIso8601String(),
+                      'registration_deadline': registrationDeadline!.toIso8601String(),
+                      'status': status,
+                      'popularity_score': popularityScore,
+                      'participant_limit': 1000, // Default
+                      'featured': false, // Default
+                    };
+
+                    Navigator.of(context).pop();
+
+                    try {
+                      if (isEditing) {
+                        if (DummyDataService.USE_DUMMY_DATA) {
+                          await DummyDataService.updateEvent(event!.id, eventData);
+                        } else {
+                          await _apiService.updateEvent(event!.id, eventData);
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Event updated successfully')),
+                        );
+                      } else {
+                        if (DummyDataService.USE_DUMMY_DATA) {
+                          await DummyDataService.createEvent(eventData);
+                        } else {
+                          await _apiService.createEvent(eventData);
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Event created successfully')),
+                        );
+                      }
+                      _loadEvents(); // Refresh list
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed to save event: $e')),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                  ),
+                  child: const Text('Save'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _deleteEvent(Event event) {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Event'),
+          content: Text('Are you sure you want to delete "${event.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  if (DummyDataService.USE_DUMMY_DATA) {
+                    await DummyDataService.deleteEvent(event.id);
+                  } else {
+                    await _apiService.deleteEvent(event.id);
+                  }
+                  _loadEvents(); // Refresh list
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Event deleted successfully')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete event: $e')),
+                  );
+                }
+              },
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -376,12 +680,7 @@ class _EventsScreenState extends State<EventsScreen> {
       ),
       child: InkWell(
         onTap: () {
-          print('[NAV] Navigate to event detail: ${event.id}');
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => EventDetailScreen(event: event),
-            ),
-          );
+          _editEvent(event);
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
@@ -496,7 +795,7 @@ class _EventsScreenState extends State<EventsScreen> {
 
               const SizedBox(height: 12),
 
-              // Registration info
+              // Management buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -507,21 +806,27 @@ class _EventsScreenState extends State<EventsScreen> {
                       color: Colors.grey,
                     ),
                   ),
-                  if (event.isRegistrationOpen)
-                    ElevatedButton(
-                      onPressed: () {
-                        // TODO: Navigate to registration
-                        print('[ACTION] Register for event: ${event.id}');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _editEvent(event),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: primaryColor,
+                        ),
                       ),
-                      child: const Text(
-                        'Register',
-                        style: TextStyle(fontSize: 14),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => _deleteEvent(event),
+                        icon: const Icon(Icons.delete, size: 16),
+                        label: const Text('Delete'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red,
+                        ),
                       ),
-                    ),
+                    ],
+                  ),
                 ],
               ),
             ],
