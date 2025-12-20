@@ -142,6 +142,8 @@ class UserProfile {
   final DateTime updatedAt;
   final List<UserRaceHistory> history;
   final List<RunnerAchievement> achievements;
+  final bool isSuperuser;
+  final bool isStaff;
 
   UserProfile({
     required this.id,
@@ -162,6 +164,8 @@ class UserProfile {
     required this.updatedAt,
     required this.history,
     required this.achievements,
+    this.isSuperuser = false,
+    this.isStaff = false,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -194,6 +198,8 @@ class UserProfile {
       achievements: (json['achievements'] as List? ?? [])
           .map((item) => RunnerAchievement.fromJson(item))
           .toList(),
+      isSuperuser: json['is_superuser'] ?? false,
+      isStaff: json['is_staff'] ?? false,
     );
   }
 
@@ -227,8 +233,11 @@ class UserProfile {
 
   /// Get upcoming races
   List<UserRaceHistory> get upcomingRaces {
-    return history.where((item) =>
-    item.status == 'upcoming' || item.status == 'registered').toList();
+    return history
+        .where(
+          (item) => item.status == 'upcoming' || item.status == 'registered',
+        )
+        .toList();
   }
 
   /// Get stats
