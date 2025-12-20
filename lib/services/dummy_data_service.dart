@@ -4,7 +4,7 @@ import '../models/models.dart';
 /// EASY TO REMOVE: Replace all method calls with real API calls
 /// All dummy data is contained here for easy replacement
 class DummyDataService {
-  static const bool USE_DUMMY_DATA = true; // Set to false to use real API
+  static const bool USE_DUMMY_DATA = false; // Set to false to use real API
 
   // Dummy Events Data
   static final List<Event> _dummyEvents = [
@@ -259,7 +259,7 @@ class DummyDataService {
   static final List<ForumThread> _dummyThreads = [
     ForumThread(
       id: 1,
-      eventId: 1,
+      eventTitle: 'Jakarta Marathon 2024',
       authorId: '1',
       authorUsername: 'testuser',
       title: 'Training tips for Jakarta Marathon',
@@ -275,7 +275,7 @@ class DummyDataService {
     ),
     ForumThread(
       id: 2,
-      eventId: 1,
+      eventTitle: 'Jakarta Marathon 2024',
       authorId: '2',
       authorUsername: 'runningfan',
       title: 'Accommodation recommendations near start line',
@@ -579,7 +579,12 @@ class DummyDataService {
 
     print('[DUMMY] getThreads called with eventId: $eventId, page: $page');
 
-    final eventThreads = _dummyThreads.where((t) => t.eventId == eventId).toList();
+    // Find event title from eventId
+    final event = _dummyEvents.firstWhere(
+      (e) => e.id == eventId,
+      orElse: () => _dummyEvents.first,
+    );
+    final eventThreads = _dummyThreads.where((t) => t.eventTitle == event.title).toList();
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
     final paginatedThreads = eventThreads.sublist(

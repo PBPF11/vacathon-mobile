@@ -81,17 +81,31 @@ class Event {
   });
 
   static DateTime _parseDate(String? dateStr) {
-    if (dateStr == null) return DateTime.now();
+    if (dateStr == null || dateStr.isEmpty) return DateTime.now();
 
-    // Fix 2-digit years in string format (0026 -> 2026)
-    if (dateStr.startsWith('00')) {
+    // Handle backend's broken date format: "0026-01-01" -> "2026-01-01"
+    if (dateStr.startsWith('00') && dateStr.length >= 10) {
       dateStr = '20' + dateStr.substring(2);
+      print('[DATE_FIX] Corrected backend date: $dateStr');
+    }
+
+    // Handle year-only dates like "2026" -> "2026-01-01"
+    if (RegExp(r'^\d{4}$').hasMatch(dateStr)) {
+      dateStr = '$dateStr-01-01';
+      print('[DATE_FIX] Fixed year-only date: $dateStr');
     }
 
     try {
       final dt = DateTime.parse(dateStr);
       return dt;
     } catch (e) {
+      print('[DATE_FIX] Failed to parse date: "$dateStr", error: $e');
+      // Last resort: try to extract year and create a valid date
+      final yearMatch = RegExp(r'(\d{4})').firstMatch(dateStr);
+      if (yearMatch != null) {
+        final year = int.tryParse(yearMatch.group(1)!) ?? DateTime.now().year;
+        return DateTime(year, 1, 1);
+      }
       return DateTime.now();
     }
   }

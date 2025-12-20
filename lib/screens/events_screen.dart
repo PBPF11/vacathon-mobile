@@ -24,7 +24,7 @@ class EventsScreen extends StatefulWidget {
 
 class _EventsScreenState extends State<EventsScreen> {
   EventsResponse? _eventsResponse;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String _errorMessage = '';
   late ApiService _apiService;
 
@@ -48,7 +48,7 @@ class _EventsScreenState extends State<EventsScreen> {
 
   Future<void> _bootstrap() async {
     _apiService = ApiService.instance;
-    await _loadEvents();
+    // Load events will be called in build method based on user role
   }
 
   Future<void> _loadEvents() async {
@@ -74,24 +74,60 @@ class _EventsScreenState extends State<EventsScreen> {
       }
 
       print('[DEBUG] Filters: $filters');
-      if (DummyDataService.USE_DUMMY_DATA) {
-        print('[DEBUG] Using dummy data');
-        _eventsResponse = await DummyDataService.getAdminEvents(filters: filters);
-        print('[DEBUG] Dummy data loaded: ${_eventsResponse?.events.length} events');
-      } else {
-        print('[DEBUG] Calling API');
-        _eventsResponse = await _apiService.getAdminEvents(filters: filters);
-        print('[DEBUG] API data loaded: ${_eventsResponse?.events.length} events');
-      }
+      // Use regular events API for admin (admin endpoints don't exist yet)
+      _eventsResponse = await _apiService.getEvents(filters: filters);
+      print('[DEBUG] API data loaded: ${_eventsResponse?.events.length} events');
       _deriveFilterOptions();
       print('[DEBUG] Events loaded successfully');
     } catch (e) {
       _errorMessage = 'Failed to load events: $e';
       print('[DEBUG] Error loading events: $e');
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadUserEvents() async {
+    if (!mounted) return;
+
+    print('[DEBUG] _loadUserEvents called, _isLoading: $_isLoading, _eventsResponse: ${_eventsResponse?.events.length ?? "null"}');
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    print('[DEBUG] Loading user events...');
+    try {
+      final filters = <String, String>{};
+      if (_searchController.text.isNotEmpty) {
+        filters['search'] = _searchController.text;
+      }
+
+      print('[DEBUG] Filters: $filters');
+      // User events use regular getEvents API
+      final response = await _apiService.getEvents(filters: filters);
+      print('[DEBUG] User events loaded: ${response.events.length} events');
+
+      if (mounted) {
+        setState(() {
+          _eventsResponse = response;
+          _isLoading = false;
+        });
+        print('[DEBUG] State updated, _isLoading: $_isLoading, events count: ${response.events.length}');
+      }
+    } catch (e) {
+      print('[DEBUG] Error loading user events: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load events: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -123,18 +159,83 @@ class _EventsScreenState extends State<EventsScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
     final isAdmin = authProvider.userProfile?.isSuperuser == true || authProvider.userProfile?.isStaff == true;
 
-    if (!isAdmin) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Access Denied'),
-          backgroundColor: primaryColor,
-        ),
-        body: const Center(
-          child: Text('You do not have permission to access this page.'),
-        ),
-      );
+    print('[DEBUG] EventsScreen.build called, isAdmin: $isAdmin (superuser: ${authProvider.userProfile?.isSuperuser}, staff: ${authProvider.userProfile?.isStaff}), username: ${authProvider.userProfile?.username}, _eventsResponse: ${_eventsResponse?.events.length ?? "null"}, _isLoading: $_isLoading');
+
+    // Load appropriate events based on user role
+    if (_eventsResponse == null && !_isLoading && mounted) {
+      print('[DEBUG] Triggering load');
+      if (isAdmin) {
+        _loadEvents();
+      } else {
+        _loadUserEvents();
+      }
     }
 
+    // Show different UI for admin vs regular users
+    if (isAdmin) {
+      return _buildAdminEventsScreen();
+    } else {
+      return _buildUserEventsScreen();
+    }
+  }
+
+  Widget _buildUserEventsScreen() {
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        title: const Text('Events'),
+        backgroundColor: primaryColor,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          // Search bar
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: whiteColor,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search events...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                 icon: const Icon(Icons.clear),
+                 onPressed: () {
+                   _searchController.clear();
+                   setState(() {
+                     _eventsResponse = null;
+                   });
+                   _loadUserEvents();
+                 },
+               )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: darkColor.withOpacity(0.2)),
+                ),
+                filled: true,
+                fillColor: bgColor,
+              ),
+              onSubmitted: (_) {
+                setState(() {
+                  _eventsResponse = null;
+                });
+                _loadUserEvents();
+              },
+            ),
+          ),
+
+          // Events list for users
+          Expanded(
+            child: _buildUserEventsList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminEventsScreen() {
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -668,6 +769,252 @@ class _EventsScreenState extends State<EventsScreen> {
         final event = _eventsResponse!.events[index];
         return _buildEventCard(event);
       },
+    );
+  }
+
+  Widget _buildUserEventsList() {
+    print('[DEBUG] _buildUserEventsList called, _isLoading: $_isLoading, _errorMessage: "$_errorMessage", events count: ${_eventsResponse?.events.length ?? "null"}');
+
+    if (_isLoading) {
+      print('[DEBUG] Showing loading indicator');
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+        ),
+      );
+    }
+
+    if (_errorMessage.isNotEmpty) {
+      print('[DEBUG] Showing error message: $_errorMessage');
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadUserEvents,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_eventsResponse == null || _eventsResponse!.events.isEmpty) {
+      print('[DEBUG] Showing no events found');
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.event_busy,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No events found',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    print('[DEBUG] Showing events list with ${_eventsResponse!.events.length} events');
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _eventsResponse!.events.length,
+      itemBuilder: (context, index) {
+        final event = _eventsResponse!.events[index];
+        return _buildUserEventCard(event);
+      },
+    );
+  }
+
+  Widget _buildUserEventCard(Event event) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        onTap: () {
+          // Navigate to event detail for registration
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => EventDetailScreen(event: event),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Event image
+              if (event.bannerImage != null)
+                Container(
+                  height: 150,
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    image: DecorationImage(
+                      image: NetworkImage(event.bannerImage!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+
+              // Title and status
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      event.title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(event.status).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      event.status.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _getStatusColor(event.status),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Location and date
+              Row(
+                children: [
+                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${event.city}, ${event.country}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 4),
+
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    event.formattedDateRange,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Categories
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: event.categories.take(3).map((category) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      category.displayName,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: darkColor,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Registration info and button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${event.registeredCount}/${event.participantLimit} registered',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => EventDetailScreen(event: event),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    ),
+                    child: const Text(
+                      'View Details',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

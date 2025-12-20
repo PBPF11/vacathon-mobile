@@ -1,7 +1,7 @@
 /// Represents a forum thread.
 class ForumThread {
   final int id;
-  final int eventId;
+  final String eventTitle;
   final String authorId;
   final String authorUsername;
   final String title;
@@ -16,7 +16,7 @@ class ForumThread {
 
   ForumThread({
     required this.id,
-    required this.eventId,
+    required this.eventTitle,
     required this.authorId,
     required this.authorUsername,
     required this.title,
@@ -33,7 +33,7 @@ class ForumThread {
   factory ForumThread.fromJson(Map<String, dynamic> json) {
     return ForumThread(
       id: json['id'],
-      eventId: json['event'] ?? 0,
+      eventTitle: json['event']?.toString() ?? 'Unknown Event',
       authorId: json['author']?.toString() ?? '0',
       authorUsername: json['author_username'] ?? 'Unknown',
       title: json['title'] ?? '',
@@ -57,7 +57,7 @@ class ForumThread {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'event': eventId,
+      'event': eventTitle,
       'author': authorId,
       'author_username': authorUsername,
       'title': title,

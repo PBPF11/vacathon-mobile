@@ -59,14 +59,10 @@ class _ForumScreenState extends State<ForumScreen> {
 
     try {
       // 1. Load Events (for creating threads)
-      final eventsResponse = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getEvents()
-          : await _apiService.getEvents();
+      final eventsResponse = await _apiService.getEvents();
 
       // 2. Load ALL Threads
-      final threadsResponse = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getThreads(1) // Fallback for dummy
-          : await _apiService.getThreads(); // No eventId = All
+      final threadsResponse = await _apiService.getThreads(); // No eventId = All
 
       if (mounted) {
         setState(() {
@@ -195,7 +191,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "In ${thread.eventTitle}",
+                        thread.eventTitle,
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -615,15 +611,6 @@ class _ForumScreenState extends State<ForumScreen> {
 
   Future<void> _submitThread(Event event, String title, String body) async {
     try {
-      if (DummyDataService.USE_DUMMY_DATA) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thread creation disabled in dummy mode'),
-          ),
-        );
-        return;
-      }
-
       await _apiService.createThread(event.id, title, body);
       _loadData(); // Refresh all to show new thread
 
@@ -641,7 +628,7 @@ class _ForumScreenState extends State<ForumScreen> {
   }
 
   bool _canDelete(String authorUsername) {
-    if (DummyDataService.USE_DUMMY_DATA || _currentUser == null) return false;
+    if (_currentUser == null) return false;
     if (_currentUser!.isSuperuser || _currentUser!.isStaff) return true;
     return _currentUser!.username == authorUsername;
   }

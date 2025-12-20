@@ -43,9 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     print('[DEBUG] Loading notifications...');
     try {
-      _notificationsResponse = await (DummyDataService.USE_DUMMY_DATA
-          ? DummyDataService.getNotifications(unreadOnly: _showUnreadOnly)
-          : _apiService!.getNotifications(unreadOnly: _showUnreadOnly));
+      _notificationsResponse = await _apiService!.getNotifications(unreadOnly: _showUnreadOnly);
       print('[DEBUG] Notifications loaded: ${_notificationsResponse?.notifications.length} notifications');
     } catch (e) {
       print('[DEBUG] Error loading notifications: $e');
@@ -58,17 +56,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(int notificationId) async {
     print('[ACTION] Mark notification as read: $notificationId');
-    if (!DummyDataService.USE_DUMMY_DATA) {
-      await _apiService!.markNotificationRead(notificationId);
-    }
+    await _apiService!.markNotificationRead(notificationId);
     await _loadNotifications();
   }
 
   Future<void> _markAllAsRead() async {
     print('[ACTION] Mark all notifications as read');
-    if (!DummyDataService.USE_DUMMY_DATA) {
-      await _apiService!.markAllNotificationsRead();
-    }
+    await _apiService!.markAllNotificationsRead();
     await _loadNotifications();
   }
 

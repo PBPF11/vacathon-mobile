@@ -60,15 +60,10 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
   }
 
   Future<void> _loadThreadDetail() async {
-    if (DummyDataService.USE_DUMMY_DATA) return;
     try {
       print('[DEBUG] Fetching thread detail for ${_thread.slug}...');
-      final updatedThread = await ApiService.instance.getThreadDetail(
-        _thread.slug,
-      );
-      print(
-        '[DEBUG] Fetched thread detail. View Count: ${updatedThread.viewCount}',
-      );
+      final updatedThread = await ApiService.instance.getThreadDetail(_thread.slug);
+      print('[DEBUG] Fetched thread detail. View Count: ${updatedThread.viewCount}');
       if (mounted) {
         setState(() {
           _thread = updatedThread;
@@ -76,18 +71,15 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
       }
     } catch (e) {
       print('[ERROR] Failed to refresh thread detail: $e');
-      // Non-critical, just keep old thread data
+      // Keep current thread data on error
     }
   }
 
   Future<void> _loadPosts() async {
     setState(() => _isLoading = true);
     try {
-      final postsResponse = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getPosts(_thread.slug)
-          : await ApiService.instance.getPosts(_thread.slug);
-
-      final rawPosts = postsResponse.posts;
+      final postsResponse = await ApiService.instance.getPosts(_thread.slug);
+      final rawPosts = postsResponse.posts ?? []; // Handle null posts
       final List<ThreadedPost> organized = [];
 
       // Map parentId -> List<Children>
@@ -123,12 +115,13 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
       });
     } catch (e) {
       print('[ERROR] Failed to load posts: $e');
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load posts: $e')));
-      }
+      // Show empty posts instead of error
+      setState(() {
+        _posts = [];
+        _organizedPosts = [];
+        _isLoading = false;
+      });
+      // Don't show error snackbar, just show empty state
     }
   }
 
@@ -147,21 +140,16 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
 
     setState(() => _isSubmitting = true);
     try {
-      if (DummyDataService.USE_DUMMY_DATA) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reply disabled in dummy mode')),
-        );
-      } else {
-        await ApiService.instance.createPost(
-          _thread.slug,
-          content,
-          parentId: _replyingTo?.id,
-        );
-        _replyController.clear();
-        _setReplyTo(null); // Reset reply state
-        _replyFocusNode.unfocus();
-        await _loadPosts(); // Reload posts
-      }
+      await ApiService.instance.createPost(
+        _thread.slug,
+        content,
+        parentId: _replyingTo?.id,
+      );
+
+      _replyController.clear();
+      _setReplyTo(null); // Reset reply state
+      _replyFocusNode.unfocus();
+      await _loadPosts(); // Reload posts
     } catch (e) {
       print('[ERROR] Failed to submit reply: $e');
       if (mounted) {
@@ -177,6 +165,7 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
   Future<void> _toggleLike(ForumPost post) async {
     try {
       await ApiService.instance.likePost(post.id);
+
       // Optimistic update
       setState(() {
         final index = _posts.indexWhere((p) => p.id == post.id);
@@ -244,6 +233,7 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
         );
       }
     } catch (e) {
+      print('[ERROR] Failed to delete thread: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -283,6 +273,7 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
         );
       }
     } catch (e) {
+      print('[ERROR] Failed to delete post: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
