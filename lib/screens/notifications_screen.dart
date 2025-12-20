@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart' as models;
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
+import '../screens/registration_detail_screen.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -42,9 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     print('[DEBUG] Loading notifications...');
     try {
-      _notificationsResponse = await (DummyDataService.USE_DUMMY_DATA
-          ? DummyDataService.getNotifications(unreadOnly: _showUnreadOnly)
-          : _apiService!.getNotifications(unreadOnly: _showUnreadOnly));
+      _notificationsResponse = await _apiService!.getNotifications(unreadOnly: _showUnreadOnly);
       print('[DEBUG] Notifications loaded: ${_notificationsResponse?.notifications.length} notifications');
     } catch (e) {
       print('[DEBUG] Error loading notifications: $e');
@@ -57,17 +56,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(int notificationId) async {
     print('[ACTION] Mark notification as read: $notificationId');
-    if (!DummyDataService.USE_DUMMY_DATA) {
-      await _apiService!.markNotificationRead(notificationId);
-    }
+    await _apiService!.markNotificationRead(notificationId);
     await _loadNotifications();
   }
 
   Future<void> _markAllAsRead() async {
     print('[ACTION] Mark all notifications as read');
-    if (!DummyDataService.USE_DUMMY_DATA) {
-      await _apiService!.markAllNotificationsRead();
-    }
+    await _apiService!.markAllNotificationsRead();
     await _loadNotifications();
   }
 
@@ -193,12 +188,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             elevation: notification.isRead ? 1 : 3,
             color: notification.isRead ? whiteColor : primaryColor.withOpacity(0.05),
             child: InkWell(
-              onTap: () {
-                if (!notification.isRead) {
-                  _markAsRead(notification.id);
-                }
-                _handleNotificationTap(notification);
-              },
+              onTap: () => _handleNotificationTap(notification),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -324,10 +314,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _handleNotificationTap(models.Notification notification) {
     print('[ACTION] Notification tapped: ${notification.id}');
-    if (notification.linkUrl != null) {
-      // TODO: Navigate to the linked resource
+
+    // 1. Otomatis tandai sudah dibaca di backend jika belum read
+    if (!notification.isRead) {
+      _markAsRead(notification.id);
+    }
+
+    final linkUrl = notification.linkUrl;
+
+    // 2. Logika Navigasi
+    if (linkUrl != null && linkUrl.contains('/registrations/')) {
+      // Ekstrak kode 'VAC-XXXX'
+      final segments = linkUrl.split('/').where((s) => s.isNotEmpty).toList();
+      if (segments.isNotEmpty) {
+        final refCode = segments.last;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RegistrationDetailScreen(referenceCode: refCode),
+          ),
+        );
+      }
+    } else {
+      // Fallback jika link tidak dikenal atau null
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Navigate to: ${notification.linkUrl}')),
+        SnackBar(content: Text('Notification: ${notification.title}')),
       );
     }
   }

@@ -24,14 +24,16 @@ class Notification {
 
   factory Notification.fromJson(Map<String, dynamic> json) {
     return Notification(
-      id: json['id'],
-      recipientId: json['recipient'],
-      title: json['title'],
-      message: json['message'],
-      category: json['category'],
+      id: json['id'] ?? 0,
+      recipientId: json['recipient'] ?? 0,
+      title: json['title'] ?? 'No Title',
+      message: json['message'] ?? '',
+      category: json['category'] ?? 'system',
       linkUrl: json['link_url'],
-      isRead: json['is_read'],
-      createdAt: DateTime.parse(json['created_at']),
+      isRead: json['is_read'] ?? false,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
       readAt: json['read_at'] != null ? DateTime.parse(json['read_at']) : null,
     );
   }
@@ -96,7 +98,7 @@ class NotificationsResponse {
 
   factory NotificationsResponse.fromJson(Map<String, dynamic> json) {
     return NotificationsResponse(
-      notifications: (json['results'] as List)
+      notifications: (json['results'] as List? ?? [])
           .map((notif) => Notification.fromJson(notif))
           .toList(),
       total: json['total'] ?? 0,

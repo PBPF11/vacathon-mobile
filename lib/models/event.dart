@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 
 /// Represents an event category (e.g., 5K, 21K).
 class EventCategory {
@@ -79,16 +80,48 @@ class Event {
     required this.updatedAt,
   });
 
+  static DateTime _parseDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return DateTime.now();
+
+    // Handle backend's broken date format: "0026-01-01" -> "2026-01-01"
+    if (dateStr.startsWith('00') && dateStr.length >= 10) {
+      dateStr = '20' + dateStr.substring(2);
+      print('[DATE_FIX] Corrected backend date: $dateStr');
+    }
+
+    // Handle year-only dates like "2026" -> "2026-01-01"
+    if (RegExp(r'^\d{4}$').hasMatch(dateStr)) {
+      dateStr = '$dateStr-01-01';
+      print('[DATE_FIX] Fixed year-only date: $dateStr');
+    }
+
+    try {
+      final dt = DateTime.parse(dateStr);
+      return dt;
+    } catch (e) {
+      print('[DATE_FIX] Failed to parse date: "$dateStr", error: $e');
+      // Last resort: try to extract year and create a valid date
+      final yearMatch = RegExp(r'(\d{4})').firstMatch(dateStr);
+      if (yearMatch != null) {
+        final year = int.tryParse(yearMatch.group(1)!) ?? DateTime.now().year;
+        return DateTime(year, 1, 1);
+      }
+      return DateTime.now();
+    }
+  }
+
   factory Event.fromJson(Map<String, dynamic> json) {
     return Event(
-      id: json['id'],
-      title: json['title'] ?? '',
-      slug: json['slug'] ?? '',
-      description: json['description'] ?? '',
-      city: json['city'] ?? '',
-      country: json['country'] ?? '',
+      id: json['id'] ?? 0,
+      title: json['title'] ?? "",
+      slug: json['slug'] ?? "",
+      description: json['description'] ?? "",
+      city: json['city'] ?? "",
+      country: json['country'] ?? "",
       venue: json['venue'],
-      startDate: DateTime.parse(json['start_date']),
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'])
+          : DateTime.now(),
       endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
       registrationOpenDate: json['registration_open_date'] != null
           ? DateTime.parse(json['registration_open_date'])
@@ -96,15 +129,16 @@ class Event {
       registrationDeadline: json['registration_deadline'] != null
           ? DateTime.parse(json['registration_deadline'])
           : DateTime.now(),
-      status: json['status'] ?? 'upcoming',
+      status: json['status'] ?? "",
       popularityScore: json['popularity_score'] ?? 0,
-      participantLimit: json['participant_limit'] ?? 0,
+      participantLimit: json['participant_limit'] == 0 ? 100 : (json['participant_limit'] ?? 100),
       registeredCount: json['registered_count'] ?? 0,
       featured: json['featured'] ?? false,
       bannerImage: json['banner_image'],
-      categories: (json['categories'] as List?)
-          ?.map((cat) => EventCategory.fromJson(cat))
-          ?.toList() ?? [],
+      // Handle list categories biar gak null error
+      categories: (json['categories'] as List? ?? [])
+          .map((i) => EventCategory.fromJson(i))
+          .toList(),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : DateTime.now(),
@@ -143,9 +177,43 @@ class Event {
   bool get isRegistrationOpen {
     final now = DateTime.now();
     final openDate = registrationOpenDate ?? now;
+    final hasCapacity = participantLimit == 0 || registeredCount < participantLimit;
     return openDate.isBefore(now) &&
         now.isBefore(registrationDeadline) &&
-        status != 'completed';
+        status != 'completed' &&
+        hasCapacity;
+  }
+
+  /// Get capacity ratio (0-100)
+  double get capacityRatio {
+    if (participantLimit == 0) return 0;
+    return (registeredCount / participantLimit).clamp(0.0, 1.0) * 100;
+  }
+
+  /// Get remaining slots
+  int? get remainingSlots {
+    if (participantLimit == 0) return null;
+    return participantLimit - registeredCount;
+  }
+
+  /// Get specific registration status message
+  String get registrationStatusMessage {
+    if (status == 'completed') {
+      return 'This event has been completed.';
+    }
+    if (DateTime.now().isAfter(registrationDeadline)) {
+      return 'Registration deadline has passed.';
+    }
+    if (registrationOpenDate != null && DateTime.now().isBefore(registrationOpenDate!)) {
+      return 'Registration opens on ${registrationOpenDate!.month}/${registrationOpenDate!.day}/${registrationOpenDate!.year}.';
+    }
+    if (participantLimit > 0 && registeredCount >= participantLimit) {
+      return 'This event is fully booked.';
+    }
+    if (isRegistrationOpen) {
+      return 'Registration is open. Secure your bib today!';
+    }
+    return 'Registration is currently closed.';
   }
 
   /// Get duration in days

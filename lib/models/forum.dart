@@ -33,15 +33,21 @@ class ForumThread {
   factory ForumThread.fromJson(Map<String, dynamic> json) {
     return ForumThread(
       id: json['id'],
-      eventTitle: json['event'] ?? 'Unknown Event',
-      authorId: json['author'] ?? 0,
+      eventTitle: json['event']?.toString() ?? 'Unknown Event',
+      authorId: json['author']?.toString() ?? '0',
       authorUsername: json['author_username'] ?? 'Unknown',
       title: json['title'] ?? '',
       slug: json['slug'] ?? '',
       body: json['body'] ?? '',
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : DateTime.now(),
-      lastActivityAt: json['last_activity_at'] != null ? DateTime.parse(json['last_activity_at']) : DateTime.now(),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
+      lastActivityAt: json['last_activity_at'] != null
+          ? DateTime.parse(json['last_activity_at'])
+          : DateTime.now(),
       isPinned: json['is_pinned'] ?? false,
       isLocked: json['is_locked'] ?? false,
       viewCount: json['view_count'] ?? 0,
@@ -97,7 +103,7 @@ class ForumPost {
     return ForumPost(
       id: json['id'],
       threadId: json['thread'],
-      authorId: json['author'],
+      authorId: json['author'].toString(),
       authorUsername: json['author_username'] ?? 'Unknown',
       parentId: json['parent'],
       content: json['content'],

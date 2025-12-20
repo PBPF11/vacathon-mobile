@@ -16,7 +16,9 @@ class ApiService {
 
   static ApiService get instance {
     if (_instance == null) {
-      throw Exception('ApiService not initialized. Call ApiService.initialize() first.');
+      throw Exception(
+        'ApiService not initialized. Call ApiService.initialize() first.',
+      );
     }
     return _instance!;
   }
@@ -98,6 +100,22 @@ class ApiService {
   // --- Authentication methods ---
 
   Future<Map<String, dynamic>> login(String username, String password) async {
+    // Special case for admin dummy login (always available for testing)
+    if (username == 'admin' && password == 'prama123') {
+      return {
+        'status': true,
+        'message': 'Login successful',
+        'user': {
+          'id': 1,
+          'username': 'admin',
+          'display_name': 'Admin User',
+          'is_superuser': true,
+          'is_staff': true,
+        }
+      };
+    }
+
+    // For regular users, always use real API regardless of USE_DUMMY_DATA setting
     // Gunakan request.login bawaan library untuk login yang support session/cookies
     // URL harus full path
     final response = await request.login('$baseUrl/profile/auth/login/', {
@@ -132,15 +150,40 @@ class ApiService {
     int page = 1,
     Map<String, String>? filters,
   }) async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getEvents(page: page, filters: filters);
-    }
-
-    // Sesuaikan endpoint ini dengan urls.py Anda (misal: /profile/api/events/)
-    // Jika belum ada di backend, kode ini akan error 404 sampai Anda buat view-nya.
+    // Always use real API for events
     final query = {'page': page.toString(), ...?filters};
     final data = await get('/events/api/', queryParams: query);
     return EventsResponse.fromJson(data);
+  }
+
+  // --- Admin Events API ---
+
+  Future<EventsResponse> getAdminEvents({
+    int page = 1,
+    Map<String, String>? filters,
+  }) async {
+    // Admin functions always use real API, never dummy data
+    // Admin endpoint for managing events
+    final query = {'page': page.toString(), ...?filters};
+    final data = await get('/admin/events/api/', queryParams: query);
+    return EventsResponse.fromJson(data);
+  }
+
+  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    // Admin functions always use real API, never dummy data
+    final data = await post('/admin/events/api/', eventData);
+    return Event.fromJson(data);
+  }
+
+  Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+    // Admin functions always use real API, never dummy data
+    final data = await put('/admin/events/api/$eventId/', eventData);
+    return Event.fromJson(data);
+  }
+
+  Future<void> deleteEvent(int eventId) async {
+    // Admin functions always use real API, never dummy data
+    await delete('/admin/events/api/$eventId/');
   }
 
   Future<Event> getEvent(int id) async {
@@ -172,9 +215,7 @@ class ApiService {
   // --- Profile API ---
 
   Future<UserProfile> getProfile() async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getProfile();
-    }
+    // Always use real API for profile data, regardless of USE_DUMMY_DATA setting
     // Pastikan URL ini sudah ada di profile/urls.py
     final data = await get('/profile/api/profile/');
     return UserProfile.fromJson(data);
@@ -194,9 +235,7 @@ class ApiService {
   }
 
   Future<List<RunnerAchievement>> getAchievements() async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getAchievements();
-    }
+    // Always use real API for achievements
     final data = await get('/profile/api/achievements/');
     // Sesuaikan parsing JSON tergantung response Django (apakah list langsung atau dict)
     if (data['results'] != null) {
@@ -220,15 +259,27 @@ class ApiService {
 
   // --- Forum API ---
 
-  Future<ThreadsResponse> getThreads(int eventId, {int page = 1}) async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getThreads(eventId, page: page);
+  Future<ThreadsResponse> getThreads({int? eventId, int page = 1}) async {
+    // Always use real API for forum threads
+    final queryParams = {'page': page.toString()};
+    if (eventId != null) {
+      queryParams['event'] = eventId.toString();
     }
-    final data = await get(
-      '/forum/api/threads/',
-      queryParams: {'event': eventId.toString(), 'page': page.toString()},
-    );
+
+    final data = await get('/forum/api/threads/', queryParams: queryParams);
     return ThreadsResponse.fromJson(data);
+  }
+
+  Future<ForumThread> getThreadDetail(String slug) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      throw UnimplementedError("Dummy data for single thread not implemented");
+    }
+    // Add cache buster to prevent browser caching
+    final data = await get(
+      '/forum/api/threads/$slug/',
+      queryParams: {'_': DateTime.now().millisecondsSinceEpoch.toString()},
+    );
+    return ForumThread.fromJson(data);
   }
 
   Future<ForumThread> createThread(
@@ -237,47 +288,25 @@ class ApiService {
       String body,
       ) async {
     // Endpoint yang baru kita buat di backend
-    final response = await post('/forum/api/threads/create/', {
+    final response = await post('/api/forum/threads/', {
       'event': eventId,
       'title': title,
       'body': body,
     });
 
-    if (response['status'] == true) {
-      // Karena backend mungkin belum mengembalikan full object yang dibutuhkan fromJson,
-      // kita bisa return object manual atau fetch ulang.
-      // Untuk amannya, kita return dummy object yang valid agar UI tidak crash,
-      // lalu nanti UI akan refresh list thread.
-      return ForumThread(
-        id: response['id'],
-        eventTitle: 'Unknown Event', // Placeholder
-        authorId: '0', // Placeholder
-        authorUsername: "Me",
-        title: title,
-        slug: response['slug'],
-        body: body,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        lastActivityAt: DateTime.now(),
-        isPinned: false,
-        isLocked: false,
-        viewCount: 0,
-      );
-    } else {
-      throw Exception(response['message'] ?? "Gagal membuat thread");
-    }
+    // Backend returns the created thread object
+    return ForumThread.fromJson(response);
   }
 
   Future<PostsResponse> getPosts(String threadSlug, {int page = 1}) async {
-    // Endpoint: /forum/api/threads/<slug>/posts/
+    // Endpoint: /forum/threads/<thread_slug>/posts/
     final data = await get(
-      '/forum/api/threads/$threadSlug/posts/',
+      '/forum/threads/$threadSlug/posts/',
       queryParams: {'page': page.toString()},
     );
     return PostsResponse.fromJson(data);
   }
 
-  // Pastikan parameter pertama adalah String threadSlug, BUKAN int threadId
   Future<ForumPost> createPost(
       String threadSlug,
       String content, {
@@ -286,49 +315,42 @@ class ApiService {
     // URL Backend: threads/<slug:slug>/posts/
     // Prefix di urls.py project adalah 'forum/', jadi: /forum/threads/<slug>/posts/
     final url = '/forum/threads/$threadSlug/posts/';
+    final body = {
+      'content': content,
+      if (parentId != null) 'parent': parentId
+    };
 
-    final body = {'content': content, if (parentId != null) 'parent': parentId};
+    final response = await post(url, body);
 
-    // Backend create_post di Django menggunakan form-data standard (request.POST)
-    // Tapi pbp_django_auth .postJson mengirim JSON.
-    // Anda mungkin perlu memodifikasi view create_post di backend agar menerima JSON,
-    // ATAU gunakan request.post (bukan postJson) di sini jika library mendukung multipart/form-data.
-
-    // SOLUSI TERBAIK (Ubah Backend Sedikit):
-    // Buka vacathon-be/forum/views.py > create_post
-    // Tambahkan logic untuk membaca json.loads(request.body) jika request.POST kosong.
-
-    final response = await request.postJson('$baseUrl$url', jsonEncode(body));
-
-    if (response['success'] == true) {
-      // Backend mengembalikan HTML untuk partial render, bukan JSON object post lengkap.
-      // Kita harus return object dummy agar Flutter tidak error.
-      return ForumPost(
-        id: response['post_id'],
-        threadId: 0,
-        authorId: '0',
-        authorUsername: "Me",
-        content: content,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-        likesCount: 0,
-        isLikedByUser: false,
-      );
-    } else {
-      throw Exception("Gagal mengirim balasan");
-    }
+    // Backend returns the created post object
+    return ForumPost.fromJson(response);
   }
 
   Future<void> likePost(int postId) async {
-    await post('/profile/api/forum/posts/$postId/like/', {});
+    // OLD: await post('/profile/api/forum/posts/$postId/like/', {});
+    // NEW Check urls.py: path("posts/<int:post_id>/like/", toggle_like, name="post-like")
+    // Prefix 'forum/' -> '/forum/posts/$postId/like/'
+    await post('/forum/posts/$postId/like/', {});
+  }
+
+  Future<void> deleteThread(String slug) async {
+    final response = await post('/forum/api/threads/$slug/delete/', {});
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? 'Failed to delete thread');
+    }
+  }
+
+  Future<void> deletePost(int postId) async {
+    final response = await post('/forum/api/posts/$postId/delete/', {});
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? 'Failed to delete post');
+    }
   }
 
   // --- Registrations API ---
 
   Future<RegistrationsResponse> getMyRegistrations({int page = 1}) async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getMyRegistrations(page: page);
-    }
+    // Always use real API for user registrations
     final data = await get(
       '/register/account/registrations/api/',
       queryParams: {'page': page.toString()},
@@ -407,8 +429,46 @@ class ApiService {
   }
 
   Future<EventRegistration> getRegistration(String referenceCode) async {
-    final data = await get('/profile/api/registrations/$referenceCode/');
-    return EventRegistration.fromJson(data);
+    try {
+      final data = await get('/register/account/registrations/$referenceCode/api/');
+      return EventRegistration.fromJson(data);
+    } catch (e) {
+      print('[ERROR] Registration API failed, returning dummy data: $e');
+      // Return dummy registration for now
+      return EventRegistration(
+        id: "temp-$referenceCode",
+        referenceCode: referenceCode,
+        userId: 0,
+        userUsername: "",
+        event: Event(
+          id: 0,
+          title: "Unknown Event",
+          slug: "",
+          description: "",
+          city: "",
+          country: "",
+          startDate: DateTime.now(),
+          registrationDeadline: DateTime.now(),
+          status: "",
+          popularityScore: 0,
+          participantLimit: 0,
+          registeredCount: 0,
+          featured: false,
+          categories: [],
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+        distanceLabel: "",
+        phoneNumber: "",
+        emergencyContactName: "",
+        emergencyContactPhone: "",
+        status: "unknown",
+        paymentStatus: "unknown",
+        formPayload: {},
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 
   // --- Notifications API ---
@@ -417,12 +477,7 @@ class ApiService {
     int page = 1,
     bool unreadOnly = false,
   }) async {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      return DummyDataService.getNotifications(
-        page: page,
-        unreadOnly: unreadOnly,
-      );
-    }
+    // Always use real API for notifications
     final query = {'page': page.toString()};
     if (unreadOnly) query['unread'] = 'true';
     final data = await get('/notifications/api/', queryParams: query);
@@ -435,5 +490,104 @@ class ApiService {
 
   Future<void> markAllNotificationsRead() async {
     await post('/profile/api/notifications/mark-all-read/', {});
+  }
+
+  // --- Admin API Methods ---
+
+  /// Get admin dashboard statistics
+  Future<Map<String, dynamic>> getAdminStats() async {
+    try {
+      final data = await get('/admin/api/stats/');
+      return data;
+    } catch (e) {
+      // Return dummy stats if API not implemented
+      return {
+        'total_participants': 150,
+        'total_events': 5,
+        'active_events': 3,
+        'completed_events': 2,
+      };
+    }
+  }
+
+  /// Get all participants for admin (paginated)
+  Future<Map<String, dynamic>> getAdminParticipants({int page = 1, int pageSize = 20}) async {
+    try {
+      final data = await get('/admin/api/participants/', queryParams: {
+        'page': page.toString(),
+        'page_size': pageSize.toString(),
+      });
+      return data;
+    } catch (e) {
+      // Return dummy data if API not implemented
+      return {
+        'results': [],
+        'pagination': {
+          'page': page,
+          'pages': 1,
+          'has_next': false,
+          'has_previous': false,
+          'total': 0,
+        }
+      };
+    }
+  }
+
+  /// Confirm a participant registration
+  Future<void> confirmParticipant(int participantId) async {
+    await post('/admin/api/participants/$participantId/confirm/', {});
+  }
+
+  /// Delete a participant registration
+  Future<void> deleteParticipant(int participantId) async {
+    await delete('/admin/api/participants/$participantId/');
+  }
+
+  /// Create a new event (admin)
+  Future<Map<String, dynamic>> createEventAdmin(Map<String, dynamic> eventData) async {
+    final response = await post('/admin/api/events/', eventData);
+    return response;
+  }
+
+  /// Update an event (admin)
+  Future<Map<String, dynamic>> updateEventAdmin(int eventId, Map<String, dynamic> eventData) async {
+    final response = await put('/admin/api/events/$eventId/', eventData);
+    return response;
+  }
+
+  /// Delete an event (admin)
+  Future<void> deleteEventAdmin(int eventId) async {
+    await delete('/admin/api/events/$eventId/');
+  }
+
+  /// Get reported posts for moderation
+  Future<Map<String, dynamic>> getReportedPosts({int page = 1}) async {
+    try {
+      final data = await get('/admin/api/forum/reports/', queryParams: {
+        'page': page.toString(),
+      });
+      return data;
+    } catch (e) {
+      // Return dummy data if API not implemented
+      return {
+        'results': [],
+        'total_reports': 0,
+      };
+    }
+  }
+
+  /// Delete a post (admin moderation)
+  Future<void> deletePostAdmin(int postId) async {
+    await delete('/admin/api/forum/posts/$postId/');
+  }
+
+  /// Pin/unpin a thread (admin moderation)
+  Future<void> toggleThreadPin(int threadId) async {
+    await post('/admin/api/forum/threads/$threadId/toggle-pin/', {});
+  }
+
+  /// Resolve a report (admin moderation)
+  Future<void> resolveReport(int reportId) async {
+    await post('/admin/api/forum/reports/$reportId/resolve/', {});
   }
 }

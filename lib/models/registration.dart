@@ -18,6 +18,7 @@ class EventRegistration {
   final String paymentStatus;
   final Map<String, dynamic> formPayload;
   final String? decisionNote;
+  final String? bibNumber;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? confirmedAt;
@@ -40,6 +41,7 @@ class EventRegistration {
     required this.paymentStatus,
     required this.formPayload,
     this.decisionNote,
+    this.bibNumber,
     required this.createdAt,
     required this.updatedAt,
     this.confirmedAt,
@@ -48,30 +50,34 @@ class EventRegistration {
 
   factory EventRegistration.fromJson(Map<String, dynamic> json) {
     return EventRegistration(
-      id: json['id'],
-      referenceCode: json['reference_code'],
-      userId: json['user'],
-      userUsername: json['user_username'] ?? 'Unknown',
-      event: Event.fromJson(json['event']),
-      categoryId: json['category'],
-      categoryDisplayName: json['category_display_name'],
-      distanceLabel: json['distance_label'] ?? 'Open Category',
-      phoneNumber: json['phone_number'],
-      emergencyContactName: json['emergency_contact_name'],
-      emergencyContactPhone: json['emergency_contact_phone'],
-      medicalNotes: json['medical_notes'],
-      status: json['status'],
-      paymentStatus: json['payment_status'],
+      id: json['id']?.toString() ?? "0",
+      referenceCode: json['reference_code'] ?? "",
+      userId: json['user_id'] ?? 0,
+      userUsername: json['user_username'] ?? "",
+
+      // Memanggil Event.fromJson yang sudah kita buat 'safe' di atas
+      event: Event.fromJson(json['event'] ?? {}),
+
+      // KUNCI: Paksa jadi String karena di JSON isinya angka 100
+      distanceLabel: json['distance_label']?.toString() ?? "",
+
+      phoneNumber: json['phone_number'] ?? "",
+      emergencyContactName: json['emergency_contact_name'] ?? "",
+
+      // Tambahkan fallback untuk field yang mungkin gak ada di JSON detail
+      emergencyContactPhone: json['emergency_contact_phone'] ?? "",
+
+      status: json['status'] ?? "pending",
+      paymentStatus: json['payment_status'] ?? "unpaid",
+
       formPayload: json['form_payload'] ?? {},
-      decisionNote: json['decision_note'],
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
-      confirmedAt: json['confirmed_at'] != null
-          ? DateTime.parse(json['confirmed_at'])
-          : null,
-      cancelledAt: json['cancelled_at'] != null
-          ? DateTime.parse(json['cancelled_at'])
-          : null,
+
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
     );
   }
 
@@ -93,6 +99,7 @@ class EventRegistration {
       'payment_status': paymentStatus,
       'form_payload': formPayload,
       'decision_note': decisionNote,
+      'bib_number': bibNumber,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'confirmed_at': confirmedAt?.toIso8601String(),

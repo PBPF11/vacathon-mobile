@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
+import 'forum_detail_screen.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -18,12 +19,16 @@ class ForumScreen extends StatefulWidget {
   State<ForumScreen> createState() => _ForumScreenState();
 }
 
-class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin {
-  TabController? _tabController;
+class _ForumScreenState extends State<ForumScreen> {
+  // Removed TabController
   List<Event> _events = [];
-  Map<int, ThreadsResponse> _threadsCache = {};
+  List<ForumThread> _threads = []; // Unified list
   bool _isLoading = true;
   late ApiService _apiService;
+  UserProfile? _currentUser;
+
+  // For Create Dialog
+  Event? _selectedEventForCreation;
 
   @override
   void initState() {
@@ -33,48 +38,46 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
 
   Future<void> _bootstrap() async {
     _apiService = ApiService.instance;
-    await _loadEvents();
+    await _loadCurrentUser();
+    await _loadData();
   }
 
-  Future<void> _loadEvents() async {
-    print('[DEBUG] ForumScreen loading events...');
+  Future<void> _loadCurrentUser() async {
     try {
-      final eventsResponse = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getEvents()
-          : await _apiService.getEvents();
-      print('[DEBUG] Forum events loaded: ${eventsResponse.events.length} events');
+      final profile = await _apiService.getProfile();
       setState(() {
-        _events = eventsResponse.events.where((event) => event.status != 'completed').toList();
-        if (_events.isNotEmpty) {
-          _tabController = TabController(length: _events.length, vsync: this);
-        }
-        _isLoading = false;
+        _currentUser = profile;
       });
-
-      // Load threads for first event
-      if (_events.isNotEmpty) {
-        await _loadThreadsForEvent(_events[0].id);
-      }
     } catch (e) {
-      print('[DEBUG] Error loading forum events: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      print('[ERROR] Failed to load user profile: $e');
     }
   }
 
-  Future<void> _loadThreadsForEvent(int eventId) async {
-    if (_threadsCache.containsKey(eventId)) return;
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
 
     try {
-      final threadsResponse = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getThreads(eventId)
-          : await _apiService.getThreads(eventId);
-      setState(() {
-        _threadsCache[eventId] = threadsResponse;
-      });
+      // 1. Load Events (for creating threads)
+      final eventsResponse = await _apiService.getEvents();
+
+      // 2. Load ALL Threads
+      final threadsResponse = await _apiService.getThreads(); // No eventId = All
+
+      if (mounted) {
+        setState(() {
+          _events = eventsResponse.events
+              .where((event) => event.status != 'completed')
+              .toList();
+          _threads = threadsResponse.threads;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      print('[ERROR] Failed to load threads for event $eventId: $e');
+      print('[DEBUG] Error loading forum data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -90,23 +93,8 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
       );
     }
 
-    if (_events.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Forum'),
-          backgroundColor: primaryColor,
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.forum, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text('No active events with forums', style: TextStyle(fontSize: 18)),
-            ],
-          ),
-        ),
-      );
+    if (_events.isEmpty && _threads.isEmpty) {
+      return _buildEmptyState();
     }
 
     return Scaffold(
@@ -115,58 +103,59 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
         title: const Text('Forum'),
         backgroundColor: primaryColor,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController!,
-          isScrollable: true,
-          tabs: _events.map((event) => Tab(text: event.title)).toList(),
-          labelColor: whiteColor,
-          unselectedLabelColor: whiteColor.withOpacity(0.7),
-          indicatorColor: accentColor,
-          onTap: (index) {
-            final eventId = _events[index].id;
-            _loadThreadsForEvent(eventId);
-          },
-        ),
       ),
-      body: TabBarView(
-        controller: _tabController!,
-        children: _events.map((event) => _buildForumTab(event)).toList(),
-      ),
+      body: _buildThreadList(),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          print('[ACTION] Create new thread tapped');
-          _showCreateThreadDialog();
-        },
+        onPressed: _showCreateThreadDialog,
         backgroundColor: primaryColor,
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildForumTab(Event event) {
-    final threadsResponse = _threadsCache[event.id];
+  Widget _buildEmptyState() {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Forum'), backgroundColor: primaryColor),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.forum, size: 64, color: Colors.grey),
+            const SizedBox(height: 16),
+            const Text(
+              'No discussions available',
+              style: TextStyle(fontSize: 18),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _bootstrap,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    if (threadsResponse == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final threads = threadsResponse.threads;
-
-    if (threads.isEmpty) {
+  Widget _buildThreadList() {
+    if (_threads.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.forum, size: 64, color: Colors.grey[400]),
+            Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'No discussions yet',
               style: TextStyle(fontSize: 18, color: textColor.withOpacity(0.6)),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Be the first to start a conversation!',
-              style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.4)),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: _loadData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
             ),
           ],
         ),
@@ -174,46 +163,53 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        _threadsCache.remove(event.id);
-        await _loadThreadsForEvent(event.id);
-      },
+      onRefresh: _loadData,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: threads.length,
+        itemCount: _threads.length,
         itemBuilder: (context, index) {
-          final thread = threads[index];
+          final thread = _threads[index];
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
             child: InkWell(
-              onTap: () {
-                print('[NAV] Navigate to thread: ${thread.id}');
-                _navigateToThread(thread);
-              },
+              onTap: () => _navigateToThread(thread),
               borderRadius: BorderRadius.circular(12),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Thread title and pinned indicator
+                    // Context (Event Name)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        thread.eventTitle,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: darkColor,
+                        ),
+                      ),
+                    ),
+
+                    // Title & Pin
                     Row(
                       children: [
                         if (thread.isPinned)
-                          Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: accentColor.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'PINNED',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
-                                color: darkColor,
-                              ),
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Icon(
+                              Icons.push_pin,
+                              size: 16,
+                              color: primaryColor,
                             ),
                           ),
                         Expanded(
@@ -226,15 +222,23 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
                             ),
                           ),
                         ),
+                        if (_canDelete(thread.authorUsername))
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () => _deleteThread(context, thread),
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.only(left: 8),
+                          ),
                       ],
                     ),
-
-                    const SizedBox(height: 8),
-
-                    // Thread preview
+                    const SizedBox(height: 4),
                     Text(
-                      thread.body.length > 150
-                          ? '${thread.body.substring(0, 150)}...'
+                      thread.body.length > 100
+                          ? '${thread.body.substring(0, 100)}...'
                           : thread.body,
                       style: TextStyle(
                         fontSize: 14,
@@ -242,42 +246,27 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
                         height: 1.4,
                       ),
                     ),
-
                     const SizedBox(height: 12),
-
-                    // Thread metadata
+                    // Metadata
                     Row(
                       children: [
                         CircleAvatar(
-                          radius: 12,
+                          radius: 10,
                           backgroundColor: primaryColor.withOpacity(0.2),
                           child: Text(
-                            thread.authorUsername.substring(0, 1).toUpperCase(),
+                            thread.authorUsername.isNotEmpty
+                                ? thread.authorUsername[0].toUpperCase()
+                                : '?',
                             style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
                               color: primaryColor,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           thread.authorUsername,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: textColor.withOpacity(0.6),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(
-                          Icons.access_time,
-                          size: 14,
-                          color: textColor.withOpacity(0.4),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _formatTimeAgo(thread.createdAt),
                           style: TextStyle(
                             fontSize: 12,
                             color: textColor.withOpacity(0.6),
@@ -291,7 +280,21 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          thread.viewCount.toString(),
+                          "${thread.viewCount}",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: textColor.withOpacity(0.6),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: textColor.withOpacity(0.4),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTimeAgo(thread.createdAt),
                           style: TextStyle(
                             fontSize: 12,
                             color: textColor.withOpacity(0.6),
@@ -299,19 +302,6 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
                         ),
                       ],
                     ),
-
-                    // Last activity
-                    if (thread.lastActivityAt.difference(thread.createdAt).inMinutes > 5)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          'Last activity ${_formatTimeAgo(thread.lastActivityAt)}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: textColor.withOpacity(0.5),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -322,90 +312,364 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
     );
   }
 
-  void _navigateToThread(ForumThread thread) {
-    // TODO: Navigate to thread detail screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Thread detail for "${thread.title}" coming soon!')),
+  void _navigateToThread(ForumThread thread) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ForumDetailScreen(thread: thread),
+      ),
     );
+    // Refresh list when returning
+    _loadData();
   }
 
   void _showCreateThreadDialog() {
     final titleController = TextEditingController();
     final bodyController = TextEditingController();
 
+    // Default selection
+    _selectedEventForCreation = _events.isNotEmpty ? _events[0] : null;
+
+    if (_events.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No active events available to create a thread."),
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Thread'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Thread Title',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: bodyController,
-                decoration: const InputDecoration(
-                  labelText: 'Message',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 5,
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.trim().isNotEmpty &&
-                  bodyController.text.trim().isNotEmpty) {
-                _submitThread(titleController.text.trim(), bodyController.text.trim());
-                Navigator.of(context).pop();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text('Create'),
-          ),
-        ],
+            backgroundColor: whiteColor,
+            elevation: 8,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Stylish Header
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 20,
+                      horizontal: 24,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: primaryColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Start a Discussion',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Share your thoughts with the community',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Form Content
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Event Dropdown
+                        const Text(
+                          "Select Event",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: darkColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<Event>(
+                              value: _selectedEventForCreation,
+                              isExpanded: true,
+                              icon: const Icon(
+                                Icons.keyboard_arrow_down,
+                                color: primaryColor,
+                              ),
+                              items: _events.map((event) {
+                                return DropdownMenuItem(
+                                  value: event,
+                                  child: Text(
+                                    event.title,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: textColor),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                setDialogState(() {
+                                  _selectedEventForCreation = val;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Title Input
+                        const Text(
+                          "Title",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: darkColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: titleController,
+                          style: const TextStyle(color: textColor),
+                          decoration: InputDecoration(
+                            hintText: 'What is this regarding?',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            filled: true,
+                            fillColor: bgColor,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Body Input
+                        const Text(
+                          "Message",
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: darkColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: bodyController,
+                          style: const TextStyle(color: textColor),
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            hintText: 'Write your detailed message here...',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            filled: true,
+                            fillColor: bgColor,
+                            contentPadding: const EdgeInsets.all(16),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: primaryColor,
+                                width: 2,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Action Buttons
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  if (_selectedEventForCreation == null) return;
+                                  if (titleController.text.trim().isNotEmpty &&
+                                      bodyController.text.trim().isNotEmpty) {
+                                    _submitThread(
+                                      _selectedEventForCreation!,
+                                      titleController.text.trim(),
+                                      bodyController.text.trim(),
+                                    );
+                                    Navigator.of(context).pop();
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Please fill in all fields',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: primaryColor,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  elevation: 2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Create Post',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Future<void> _submitThread(String title, String body) async {
-    if (_events.isEmpty) return;
-    final event = _events[_tabController?.index ?? 0];
-
+  Future<void> _submitThread(Event event, String title, String body) async {
     try {
-      if (DummyDataService.USE_DUMMY_DATA) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Thread creation disabled in dummy mode')),
-        );
-        return;
-      }
+      await _apiService.createThread(event.id, title, body);
+      _loadData(); // Refresh all to show new thread
 
-      await _apiService!.createThread(event.id, title, body);
-      _threadsCache.remove(event.id);
-      await _loadThreadsForEvent(event.id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thread created successfully!')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thread created successfully!')),
+        );
+      }
     } catch (e) {
       print('[ERROR] Failed to create thread: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create thread: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to create thread: $e')));
+    }
+  }
+
+  bool _canDelete(String authorUsername) {
+    if (_currentUser == null) return false;
+    if (_currentUser!.isSuperuser || _currentUser!.isStaff) return true;
+    return _currentUser!.username == authorUsername;
+  }
+
+  Future<void> _deleteThread(BuildContext context, ForumThread thread) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Thread'),
+        content: const Text('Are you sure you want to delete this thread?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await _apiService.deleteThread(thread.slug);
+      _loadData(); // Refresh list
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Thread deleted successfully')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete thread: $e')));
+      }
     }
   }
 
@@ -422,11 +686,5 @@ class _ForumScreenState extends State<ForumScreen> with TickerProviderStateMixin
     } else {
       return 'Just now';
     }
-  }
-
-  @override
-  void dispose() {
-    _tabController?.dispose();
-    super.dispose();
   }
 }

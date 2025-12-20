@@ -201,12 +201,14 @@ class EventDetail {
   final List<AidStation> aidStations;
   final List<RouteSegment> routeSegments;
   final List<EventDocument> documents;
+  final String? mapUrl;
 
   EventDetail({
     required this.schedules,
     required this.aidStations,
     required this.routeSegments,
     required this.documents,
+    this.mapUrl,
   });
 
   factory EventDetail.fromJson(Map<String, dynamic> json) {
@@ -223,6 +225,7 @@ class EventDetail {
       documents: (json['documents'] as List? ?? [])
           .map((item) => EventDocument.fromJson(item))
           .toList(),
+      mapUrl: json['map_url'],
     );
   }
 
@@ -232,6 +235,7 @@ class EventDetail {
       'aid_stations': aidStations.map((item) => item.toJson()).toList(),
       'route_segments': routeSegments.map((item) => item.toJson()).toList(),
       'documents': documents.map((item) => item.toJson()).toList(),
+      'map_url': mapUrl,
     };
   }
 }
