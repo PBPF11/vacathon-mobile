@@ -8,6 +8,10 @@ import '../models/models.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
+import 'events_screen.dart';
+import 'forum_screen.dart';
+import 'notifications_screen.dart';
+import 'profile_view_screen.dart';
 import 'event_detail_screen.dart';
 
 // CSS Variables from reference - exact matches
@@ -31,6 +35,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   static const String _newsVideoId = 'aZ9HQJoMPWc';
   static const String _newsVideoUrl =
       'https://www.youtube.com/watch?v=aZ9HQJoMPWc';
+
+  void _goToScreen(Widget screen, int index) {
+    widget.onNavigate(index);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+  }
 
   final NumberFormat _numberFormat = NumberFormat.decimalPattern();
 
@@ -814,7 +825,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               ),
               const SizedBox(height: 16),
               OutlinedButton(
-                onPressed: () => widget.onNavigate(1),
+            onPressed: () => _goToScreen(const EventsScreen(), 1),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: primaryColor,
                   side: BorderSide(color: primaryColor.withOpacity(0.6)),
@@ -1093,7 +1104,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => widget.onNavigate(3),
+            onPressed: () =>
+                _goToScreen(const ForumScreen(), 3),
             style: ElevatedButton.styleFrom(
               backgroundColor: whiteColor,
               foregroundColor: primaryColor,
@@ -1188,22 +1200,26 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   _buildNavCard(
                     label: 'Daftar Marathon',
                     icon: Icons.flag,
-                    onTap: () => widget.onNavigate(1),
+                    onTap: () =>
+                        _goToScreen(const EventsScreen(), 1),
                   ),
                   _buildNavCard(
                     label: 'Forum Diskusi',
                     icon: Icons.forum,
-                    onTap: () => widget.onNavigate(3),
+                    onTap: () =>
+                        _goToScreen(const ForumScreen(), 3),
                   ),
                   _buildNavCard(
                     label: 'Akun Saya',
                     icon: Icons.person,
-                    onTap: () => widget.onNavigate(2),
+                    onTap: () =>
+                        _goToScreen(const ProfileViewScreen(), 2),
                   ),
                   _buildNavCard(
                     label: 'Notifikasi',
                     icon: Icons.notifications,
-                    onTap: () => widget.onNavigate(4),
+                    onTap: () =>
+                        _goToScreen(const NotificationsScreen(), 4),
                   ),
                   _buildNavCard(
                     label: 'Logout',
@@ -1518,7 +1534,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () => widget.onNavigate(1),
+            onPressed: () => _goToScreen(const EventsScreen(), 1),
                 child: const Text(
                   'See all events',
                   style: TextStyle(color: primaryColor),
