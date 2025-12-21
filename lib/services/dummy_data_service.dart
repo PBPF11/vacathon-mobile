@@ -826,6 +826,24 @@ class DummyDataService {
     );
   }
 
+  // Helpers for lookups in dummy mode
+  static EventRegistration? findRegistrationByCode(String referenceCode) {
+    try {
+      return _dummyRegistrations
+          .firstWhere((reg) => reg.referenceCode == referenceCode);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Event? findEventBySlug(String slug) {
+    try {
+      return _dummyEvents.firstWhere((e) => e.slug == slug);
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Helper method to get all events (for filtering)
   static List<Event> getAllEvents() {
     return _dummyEvents;

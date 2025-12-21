@@ -3,6 +3,7 @@ import '../models/models.dart' as models;
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 import '../screens/registration_detail_screen.dart';
+import '../screens/event_detail_screen.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -344,29 +345,61 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _handleNotificationTap(models.Notification notification) async {
     print('[ACTION] Notification tapped: ${notification.id}');
-    
+    // Mark as read
     if (!notification.isRead) {
-      await _apiService!.markNotificationRead(notification.id);
+      await _markAsRead(notification.id);
     }
-    // 1. Kirim perintah ke Django untuk menandai terbaca
-    if (!notification.isRead) {
-      try {
-        await _markAsRead(notification.id); // Fungsi ini sudah ada di file lo
-      } catch (e) {
-        print('Gagal menandai terbaca: $e');
+
+    final linkUrl = notification.linkUrl;
+
+    // Dummy mode navigation
+    if (DummyDataService.USE_DUMMY_DATA) {
+      if (linkUrl != null && linkUrl.contains('/registrations/')) {
+        final refCode =
+            linkUrl.split('/').where((s) => s.isNotEmpty).toList().last;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                RegistrationDetailScreen(referenceCode: refCode),
+          ),
+        );
+        return;
+      }
+      if (linkUrl != null && linkUrl.contains('/events/')) {
+        final slug = linkUrl.split('/').where((s) => s.isNotEmpty).toList().last;
+        final event = DummyDataService.findEventBySlug(slug);
+        if (event != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EventDetailScreen(event: event),
+            ),
+          );
+        }
+        return;
       }
     }
 
-    // 2. Logika Navigasi (tetap seperti yang sudah kita buat)
-    final linkUrl = notification.linkUrl;
+    // Real API navigation
     if (linkUrl != null && linkUrl.contains('/registrations/')) {
-      final segments = linkUrl.split('/').where((s) => s.isNotEmpty).toList();
-      final refCode = segments.last;
+      final refCode = linkUrl.split('/').where((s) => s.isNotEmpty).toList().last;
 
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => RegistrationDetailScreen(referenceCode: refCode),
+        ),
+      );
+      return;
+    }
+
+    if (linkUrl != null && linkUrl.contains('/events/')) {
+      final slug = linkUrl.split('/').where((s) => s.isNotEmpty).toList().last;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EventDetailScreen(slug: slug),
         ),
       );
     }

@@ -865,6 +865,11 @@ class ApiService {
   }
 
   Future<EventRegistration> getRegistration(String referenceCode) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      final reg = DummyDataService.findRegistrationByCode(referenceCode);
+      if (reg != null) return reg;
+      throw Exception('Registration not found (dummy data)');
+    }
     final data = await get(
       '/register/account/registrations/$referenceCode/api/',
     );
