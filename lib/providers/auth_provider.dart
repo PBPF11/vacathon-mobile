@@ -121,7 +121,9 @@ class AuthProvider with ChangeNotifier {
   /// Ambil data profil user dari backend
   Future<void> loadProfile() async {
     try {
-      _userProfile = await ApiService.instance.getProfile();
+      final profile = await ApiService.instance.getProfile();
+      print('[AUTH] Loaded profile: ${profile.toJson()}');
+      _userProfile = profile;
       notifyListeners();
     } catch (e) {
       print('[AUTH] Failed to load profile: $e');
