@@ -368,15 +368,31 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
       if (linkUrl != null && linkUrl.contains('/events/')) {
         final slug = linkUrl.split('/').where((s) => s.isNotEmpty).toList().last;
-        final event = DummyDataService.findEventBySlug(slug);
-        if (event != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EventDetailScreen(event: event),
-            ),
-          );
-        }
+        final event = DummyDataService.findEventBySlug(slug) ??
+            models.Event(
+              id: 0,
+              title: slug.replaceAll('-', ' '),
+              slug: slug,
+              description: '',
+              city: '',
+              country: '',
+              startDate: DateTime.now(),
+              registrationDeadline: DateTime.now(),
+              status: '',
+              popularityScore: 0,
+              participantLimit: 0,
+              registeredCount: 0,
+              featured: false,
+              categories: const [],
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => EventDetailScreen(event: event),
+          ),
+        );
         return;
       }
     }
@@ -400,9 +416,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         context,
         MaterialPageRoute(
           builder: (context) => EventDetailScreen(
-            event: Event(
+            event: models.Event(
               id: 0,
-              title: '',
+              title: slug.replaceAll('-', ' '),
               slug: slug,
               description: '',
               city: '',
