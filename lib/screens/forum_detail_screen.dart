@@ -175,35 +175,61 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
   }
 
   Future<void> _toggleLike(ForumPost post) async {
+    final index = _posts.indexWhere((p) => p.id == post.id);
+    if (index == -1) return;
+
+    final oldPost = _posts[index];
+    final newLiked = !oldPost.isLikedByUser;
+    final newCount = newLiked
+        ? oldPost.likesCount + 1
+        : (oldPost.likesCount - 1).clamp(0, 999999);
+
+    // Optimistic Update: Update UI immediately
+    setState(() {
+      final updatedPost = ForumPost(
+        id: oldPost.id,
+        threadId: oldPost.threadId,
+        authorId: oldPost.authorId,
+        authorUsername: oldPost.authorUsername,
+        parentId: oldPost.parentId,
+        content: oldPost.content,
+        createdAt: oldPost.createdAt,
+        updatedAt: oldPost.updatedAt,
+        likesCount: newCount,
+        isLikedByUser: newLiked,
+      );
+      _posts[index] = updatedPost;
+
+      // Update organized posts (which drives the UI)
+      final orgIndex = _organizedPosts.indexWhere(
+        (tp) => tp.post.id == post.id,
+      );
+      if (orgIndex != -1) {
+        _organizedPosts[orgIndex] = ThreadedPost(
+          updatedPost,
+          _organizedPosts[orgIndex].depth,
+        );
+      }
+    });
+
     try {
       await ApiService.instance.likePost(post.id);
-      // Optimistic update
-      setState(() {
-        final index = _posts.indexWhere((p) => p.id == post.id);
-        if (index != -1) {
-          final oldPost = _posts[index];
-          final newLiked = !oldPost.isLikedByUser;
-          final newCount = newLiked
-              ? oldPost.likesCount + 1
-              : oldPost.likesCount - 1;
-
-          _posts[index] = ForumPost(
-            id: oldPost.id,
-            threadId: oldPost.threadId,
-            authorId: oldPost.authorId,
-            authorUsername: oldPost.authorUsername,
-            parentId: oldPost.parentId,
-            content: oldPost.content,
-            createdAt: oldPost.createdAt,
-            updatedAt: oldPost.updatedAt,
-            likesCount: newCount < 0 ? 0 : newCount,
-            isLikedByUser: newLiked,
-          );
-        }
-      });
     } catch (e) {
       print('[ERROR] Failed to like post: $e');
+      // Revert change if API fails
       if (mounted) {
+        setState(() {
+          _posts[index] = oldPost;
+          final orgIndex = _organizedPosts.indexWhere(
+            (tp) => tp.post.id == post.id,
+          );
+          if (orgIndex != -1) {
+            _organizedPosts[orgIndex] = ThreadedPost(
+              oldPost,
+              _organizedPosts[orgIndex].depth,
+            );
+          }
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to like post')));

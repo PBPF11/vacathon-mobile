@@ -221,25 +221,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           shape: BoxShape.circle,
                           color: primaryColor.withOpacity(0.15),
                         ),
-                        child: _profile.avatarUrl != null
+                        child: _profile.avatarUrl != null &&
+                                _profile.avatarUrl!.isNotEmpty
                             ? ClipOval(
-                          child: Image.network(
-                            _profile.avatarUrl!,
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
-                          ),
-                        )
+                                child: Image.network(
+                                  _profile.avatarUrl!,
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.cover,
+                                ),
+                              )
                             : Center(
-                          child: Text(
-                            _profile.displayName.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w700,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
+                                child: Text(
+                                  _profile.displayName.isNotEmpty
+                                      ? _profile.displayName[0].toUpperCase()
+                                      : _profile.username.isNotEmpty
+                                          ? _profile.username[0].toUpperCase()
+                                          : '?',
+                                  style: const TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.w700,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
                       ),
                       TextButton(
                         onPressed: () {

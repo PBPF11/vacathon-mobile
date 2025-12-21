@@ -31,7 +31,12 @@ PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "muhammad-rafi419-vacathon.pbp.cs.ui.ac.id", "10.0.2.2"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "muhammad-rafi419-vacathon.pbp.cs.ui.ac.id",
+    "10.0.2.2",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://muhammad-rafi419-vacathon.pbp.cs.ui.ac.id"
@@ -48,6 +53,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'rest_framework',
+    'rest_framework.authtoken',
     'core',
     'events',
     'event_detail',
@@ -177,6 +184,19 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+}
 
 LOGIN_URL = '/profile/login/'
 LOGIN_REDIRECT_URL = '/profile/'

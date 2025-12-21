@@ -25,10 +25,13 @@ class AuthProvider with ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
 
   /// Cek status login saat aplikasi dimulai
-  /// Cek status login saat aplikasi dimulai
   Future<void> _checkLoginStatus() async {
     try {
       _userProfile = await ApiService.instance.tryGetProfile();
+      if (_userProfile == null) {
+        // Handle cases where session cookies still exist (web hot restart).
+        await loadProfile();
+      }
       _isAuthenticated = _userProfile != null;
     } catch (_) {
       _isAuthenticated = false;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
@@ -35,6 +36,14 @@ class _ForumScreenState extends State<ForumScreen> {
   String _selectedSort = 'recent'; // recent, popular, oldest
   Event? _selectedEventFilter;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -194,7 +203,15 @@ class _ForumScreenState extends State<ForumScreen> {
                 filled: true,
                 fillColor: Colors.grey.shade50,
               ),
+              onChanged: (value) {
+                if (_debounce?.isActive ?? false) _debounce!.cancel();
+                _debounce = Timer(const Duration(milliseconds: 500), () {
+                  setState(() => _searchQuery = value);
+                  _loadData();
+                });
+              },
               onSubmitted: (value) {
+                _debounce?.cancel();
                 setState(() => _searchQuery = value);
                 _loadData();
               },
@@ -264,7 +281,10 @@ class _ForumScreenState extends State<ForumScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<Event?>(
-                    value: _selectedEventFilter,
+                    value: _selectedEventFilter != null &&
+                            _events.contains(_selectedEventFilter)
+                        ? _selectedEventFilter
+                        : null,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -413,7 +433,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        "In ${thread.eventTitle}",
+                        "In ${_getEventTitle(thread)}",
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -916,6 +936,17 @@ class _ForumScreenState extends State<ForumScreen> {
       return '${difference.inMinutes}m ago';
     } else {
       return 'Just now';
+    }
+  }
+
+  String _getEventTitle(ForumThread thread) {
+    try {
+      final event = _events.firstWhere((e) => e.id == thread.eventId);
+      return event.title;
+    } catch (_) {
+      return int.tryParse(thread.eventTitle) != null
+          ? 'Event #${thread.eventTitle}'
+          : thread.eventTitle;
     }
   }
 }

@@ -7,6 +7,9 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/events_screen.dart';
+import 'screens/admin_event_management_screen.dart';
+import 'screens/admin_participant_management_screen.dart';
+import 'screens/admin_forum_moderation_screen.dart';
 
 // App Colors
 const Color primaryGreen = Color(0xFFB9F61E);
@@ -111,6 +114,11 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/register': (context) => const RegisterScreen(),
+        // Admin routes - accessible from main dashboard
+        '/admin/events': (context) => const AdminEventManagementScreen(),
+        '/admin/participants': (context) =>
+            const AdminParticipantManagementScreen(),
+        '/admin/forum': (context) => const AdminForumModerationScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );
@@ -125,6 +133,8 @@ class AuthWrapper extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
 
     if (authProvider.isAuthenticated) {
+      // All users (including admins) go to the main dashboard
+      // Admin features are shown within the main dashboard for admin users
       return const HomeScreen();
     } else {
       return const LoginScreen();

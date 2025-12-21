@@ -2,7 +2,7 @@
 class ForumThread {
   final int id;
   final int eventId;
-  final String eventTitle; // Added field
+  final String eventTitle;
   final String authorId;
   final String authorUsername;
   final String title;
@@ -19,7 +19,7 @@ class ForumThread {
   ForumThread({
     required this.id,
     required this.eventId,
-    required this.eventTitle, // Added
+    required this.eventTitle,
     required this.authorId,
     required this.authorUsername,
     required this.title,
@@ -37,8 +37,12 @@ class ForumThread {
   factory ForumThread.fromJson(Map<String, dynamic> json) {
     return ForumThread(
       id: json['id'],
-      eventId: json['event'] ?? 0,
-      eventTitle: json['event_title'] ?? 'Unknown Event', // Added with fallback
+      eventId: json['event'] is int
+          ? json['event']
+          : (int.tryParse(json['event'].toString()) ?? 0),
+      // Prefer explicit event_title if backend sends it, otherwise stringify event ID
+      eventTitle:
+          json['event_title'] ?? json['event']?.toString() ?? 'Unknown Event',
       authorId: json['author']?.toString() ?? '0',
       authorUsername: json['author_username'] ?? 'Unknown',
       title: json['title'] ?? '',
@@ -64,7 +68,7 @@ class ForumThread {
     return {
       'id': id,
       'event': eventId,
-      'event_title': eventTitle, // Added
+      'event_title': eventTitle,
       'author': authorId,
       'author_username': authorUsername,
       'title': title,
