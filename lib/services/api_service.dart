@@ -514,8 +514,11 @@ class ApiService {
     await post('/forum/posts/$postId/like/', {});
   }
 
-  Future<void> reportPost(int postId, String reason) async {
-    await post('/forum/posts/$postId/report/', {'reason': reason});
+  Future<Map<String, dynamic>> reportPost(int postId, String reason) async {
+    final response = await post('/forum/posts/$postId/report/', {
+      'reason': reason,
+    });
+    return response;
   }
 
   Future<void> deleteThread(String slug) async {
@@ -773,31 +776,31 @@ class ApiService {
   }
 
   /// Get reported posts for moderation
-  Future<Map<String, dynamic>> getReportedPosts({int page = 1}) async {
+  Future<Map<String, dynamic>> getReports({int page = 1}) async {
     try {
       final data = await get(
-        '/admin/api/forum/reports/',
+        '/forum/api/reports/',
         queryParams: {'page': page.toString()},
       );
       return data;
     } catch (e) {
       // Return dummy data if API not implemented
-      return {'results': [], 'total_reports': 0};
+      return {'results': [], 'total': 0};
     }
+  }
+
+  /// Resolve a report
+  Future<void> resolveReport(int reportId) async {
+    await post('/forum/api/reports/$reportId/resolve/', {});
   }
 
   /// Delete a post (admin moderation)
   Future<void> deletePostAdmin(int postId) async {
-    await delete('/admin/api/forum/posts/$postId/');
+    await delete('/forum/api/posts/$postId/delete/');
   }
 
   /// Pin/unpin a thread (admin moderation)
   Future<void> toggleThreadPin(int threadId) async {
     await post('/admin/api/forum/threads/$threadId/toggle-pin/', {});
-  }
-
-  /// Resolve a report (admin moderation)
-  Future<void> resolveReport(int reportId) async {
-    await post('/admin/api/forum/reports/$reportId/resolve/', {});
   }
 }
