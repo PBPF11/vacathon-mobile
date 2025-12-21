@@ -278,7 +278,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> login(String username, String password) async {
     if (DummyDataService.USE_DUMMY_DATA) {
-      // Dummy login for admin
+      // Dummy login for both admin and regular users
       if (username == 'admin' && password == 'prama123') {
         return {
           'status': true,
@@ -291,9 +291,20 @@ class ApiService {
             'is_staff': true,
           },
         };
-      } else {
-        return {'status': false, 'message': 'Invalid credentials'};
       }
+
+      // Allow any other username/password as a non-admin user in dummy mode
+      return {
+        'status': true,
+        'message': 'Login successful',
+        'user': {
+          'id': 2,
+          'username': username,
+          'display_name': username,
+          'is_superuser': false,
+          'is_staff': false,
+        },
+      };
     }
 
     // Gunakan request.login bawaan library untuk login yang support session/cookies
@@ -318,6 +329,21 @@ class ApiService {
     String username,
     String password,
   ) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      // In dummy mode, accept all registrations immediately
+      return {
+        'status': true,
+        'message': 'Registration successful',
+        'user': {
+          'id': DateTime.now().millisecondsSinceEpoch,
+          'username': username,
+          'display_name': username,
+          'is_superuser': false,
+          'is_staff': false,
+        },
+      };
+    }
+
     final uri = Uri.parse('$baseUrl/profile/auth/register/');
     try {
       final response = await http.post(
