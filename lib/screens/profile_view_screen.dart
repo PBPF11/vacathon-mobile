@@ -180,7 +180,6 @@ class _ProfileViewScreenState extends State<ProfileViewScreen> with TickerProvid
               IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () {
-                  print('[ACTION] Edit profile tapped from view screen');
                   Navigator.of(context).pushNamed('/profile/edit');
                 },
               ),
