@@ -606,6 +606,27 @@ class ApiService {
     }
   }
 
+  Future<void> updateAccount(Map<String, dynamic> accountData) async {
+    final response = await post('/profile/api/account/update/', accountData);
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? "Gagal update akun");
+    }
+  }
+
+  Future<void> changePassword(Map<String, dynamic> passwordData) async {
+    final response = await post('/profile/api/account/password/', passwordData);
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? "Gagal ubah password");
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    final response = await post('/profile/api/account/delete/', {});
+    if (response['status'] != true) {
+      throw Exception(response['message'] ?? "Gagal hapus akun");
+    }
+  }
+
   Future<List<RunnerAchievement>> getAchievements() async {
     if (DummyDataService.USE_DUMMY_DATA) {
       return DummyDataService.getAchievements();

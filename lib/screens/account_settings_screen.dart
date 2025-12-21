@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/models.dart';
+import '../services/api_service.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -52,8 +53,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   void _populateFormFields() {
     _usernameController.text = _profile.username;
-    // For demo purposes, we'll use a dummy email
-    _emailController.text = '${_profile.username}@example.com';
+    // Use real email from profile, defaulting to empty string if null
+    _emailController.text = _profile.email ?? '';
   }
 
   Future<void> _saveAccountSettings() async {
@@ -64,12 +65,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     });
 
     try {
-      // For demo purposes, we'll just show success
-      // In real implementation, this would call API to update account settings
+      await ApiService.instance.updateAccount({
+        'username': _usernameController.text.trim(),
+        'email': _emailController.text.trim(),
+      });
 
+      // Refresh profile in provider to reflect changes (e.g. username)
       if (mounted) {
+        await Provider.of<AuthProvider>(context, listen: false).loadProfile();
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Account settings updated successfully!')),
+          const SnackBar(
+            content: Text('Account settings updated successfully!'),
+          ),
         );
         Navigator.of(context).pop();
       }
@@ -101,8 +109,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     });
 
     try {
-      // For demo purposes, we'll just show success
-      // In real implementation, this would call API to change password
+      await ApiService.instance.changePassword({
+        'current_password': _currentPasswordController.text,
+        'new_password': _newPasswordController.text,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -138,9 +148,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           title: const Text('Account Settings'),
           backgroundColor: primaryColor,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -155,17 +163,20 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             onPressed: _isLoading ? null : _saveAccountSettings,
             child: _isLoading
                 ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
                 : const Text(
-              'Save',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
+                    'Save',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ],
       ),
@@ -211,10 +222,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Email is required';
+                      return null;
                     }
                     // Basic email validation
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                    final emailRegex = RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    );
                     if (!emailRegex.hasMatch(value.trim())) {
                       return 'Please enter a valid email address';
                     }
@@ -329,13 +342,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                               ),
                               child: _isLoading
                                   ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
                                   : const Text('Change Password'),
                             ),
                           ),
@@ -371,10 +387,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       const SizedBox(height: 8),
                       const Text(
                         'Once you delete your account, there is no going back. Please be certain.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.red,
-                        ),
+                        style: TextStyle(fontSize: 14, color: Colors.red),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(
@@ -387,19 +400,45 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                               builder: (context) => AlertDialog(
                                 title: const Text('Delete Account'),
                                 content: const Text(
-                                    'Are you sure you want to delete your account? This action cannot be undone.'
+                                  'Are you sure you want to delete your account? This action cannot be undone.',
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.of(context).pop(),
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
                                     child: const Text('Cancel'),
                                   ),
                                   TextButton(
-                                    onPressed: () {
+                                    onPressed: () async {
                                       Navigator.of(context).pop();
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Account deletion not implemented in demo')),
-                                      );
+
+                                      try {
+                                        await ApiService.instance
+                                            .deleteAccount();
+                                        if (context.mounted) {
+                                          await Provider.of<AuthProvider>(
+                                            context,
+                                            listen: false,
+                                          ).logout();
+                                          if (context.mounted) {
+                                            Navigator.of(
+                                              context,
+                                            ).pop(); // Exit screen
+                                          }
+                                        }
+                                      } catch (e) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to delete account: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
                                     },
                                     style: TextButton.styleFrom(
                                       foregroundColor: Colors.red,
