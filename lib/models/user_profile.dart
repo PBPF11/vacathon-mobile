@@ -29,53 +29,55 @@ class UserRaceHistory {
   });
 
   factory UserRaceHistory.fromJson(Map<String, dynamic> json) {
-  return UserRaceHistory(
-    id: json['id'] ?? 0,
+    return UserRaceHistory(
+      id: json['id'] ?? 0,
 
-    // Logic untuk handle jika 'event' cuma String (dari history profile)
-    event: json['event'] is String
-        ? Event(
-            id: 0,
-            title: json['event'], // Nama event dari JSON
-            slug: json['event_slug'] ?? '',
-            description: '',
-            city: json['city'] ?? '', // Ambil city dari level history jika ada
-            country: json['country'] ?? '',
-            startDate: json['registration_date'] != null
-                ? DateTime.parse(json['registration_date'])
-                : DateTime.now(),
-            registrationDeadline: DateTime.now(),
-            status: json['status'] ?? '',
-            popularityScore: 0,
-            participantLimit: 0,
-            registeredCount: 0,
-            featured: false,
-            categories: [], // Kosongkan saja karena di history biasanya nggak lengkap
-            createdAt: DateTime.now(),
-            updatedAt: DateTime.now(),
-          )
-        : Event.fromJson(json['event']),
+      // Logic untuk handle jika 'event' cuma String (dari history profile)
+      event: json['event'] is String
+          ? Event(
+              id: 0,
+              title: json['event'], // Nama event dari JSON
+              slug: json['event_slug'] ?? '',
+              description: '',
+              city:
+                  json['city'] ?? '', // Ambil city dari level history jika ada
+              country: json['country'] ?? '',
+              startDate: json['registration_date'] != null
+                  ? DateTime.parse(json['registration_date'])
+                  : DateTime.now(),
+              registrationDeadline: DateTime.now(),
+              status: json['status'] ?? '',
+              popularityScore: 0,
+              participantLimit: 0,
+              registeredCount: 0,
+              featured: false,
+              categories:
+                  [], // Kosongkan saja karena di history biasanya nggak lengkap
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            )
+          : Event.fromJson(json['event']),
 
-    category: json['category']?.toString() ?? '',
-    registrationDate: json['registration_date'] != null
-        ? DateTime.parse(json['registration_date'])
-        : DateTime.now(),
-    status: json['status'] ?? 'pending',
-    bibNumber: json['bib_number'],
+      category: json['category']?.toString() ?? '',
+      registrationDate: json['registration_date'] != null
+          ? DateTime.parse(json['registration_date'])
+          : DateTime.now(),
+      status: json['status'] ?? 'pending',
+      bibNumber: json['bib_number'],
 
-    // Handle Duration dengan aman
-    finishTime: (json['finish_time'] != null && json['finish_time'] is int)
-        ? Duration(seconds: json['finish_time'])
-        : null,
+      // Handle Duration dengan aman
+      finishTime: (json['finish_time'] != null && json['finish_time'] is int)
+          ? Duration(seconds: json['finish_time'])
+          : null,
 
-    medalAwarded: json['medal_awarded'] ?? false,
-    certificateUrl: json['certificate_url'],
-    notes: json['notes'],
-    updatedAt: json['updated_at'] != null
-        ? DateTime.parse(json['updated_at'])
-        : DateTime.now(),
-  );
-}
+      medalAwarded: json['medal_awarded'] ?? false,
+      certificateUrl: json['certificate_url'],
+      notes: json['notes'],
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : DateTime.now(),
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -157,6 +159,7 @@ class RunnerAchievement {
 class UserProfile {
   final int id;
   final String username;
+  final String? email;
   final String displayName;
   final String? bio;
   final String? city;
@@ -179,6 +182,7 @@ class UserProfile {
   UserProfile({
     required this.id,
     required this.username,
+    this.email,
     required this.displayName,
     this.bio,
     this.city,
@@ -203,6 +207,7 @@ class UserProfile {
     return UserProfile(
       id: json['id'] ?? 0,
       username: json['username'],
+      email: json['email'],
       displayName: json['display_name'] ?? json['username'],
       bio: json['bio'],
       city: json['city'],
@@ -238,6 +243,7 @@ class UserProfile {
     return {
       'id': id,
       'username': username,
+      'email': email,
       'display_name': displayName,
       'bio': bio,
       'city': city,
