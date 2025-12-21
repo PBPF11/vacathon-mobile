@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import '../services/api_service.dart';
+import '../services/dummy_data_service.dart';
 import '../models/models.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -52,10 +53,39 @@ class AuthProvider with ChangeNotifier {
 
       // Cek status dari response JSON Django
       if (response['status'] == true) {
-        _isAuthenticated = true;
-        // Setelah login sukses, langsung ambil data profil user
-        await loadProfile();
-        print('[AUTH] Login success: $username');
+        // In dummy mode, build a profile from the login payload and skip the extra fetch
+        if (DummyDataService.USE_DUMMY_DATA && response['user'] != null) {
+          final user = response['user'] as Map<String, dynamic>;
+          _userProfile = UserProfile(
+            id: user['id'] ?? 0,
+            username: user['username'] ?? username,
+            displayName: user['display_name'] ?? user['username'] ?? username,
+            bio: null,
+            city: null,
+            country: null,
+            avatarUrl: null,
+            favoriteDistance: null,
+            emergencyContactName: null,
+            emergencyContactPhone: null,
+            website: null,
+            instagramHandle: null,
+            stravaProfile: null,
+            birthDate: null,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+            history: const [],
+            achievements: const [],
+            isSuperuser: user['is_superuser'] == true,
+            isStaff: user['is_staff'] == true,
+          );
+          _isAuthenticated = true;
+          print('[AUTH] Dummy login success: $username');
+        } else {
+          _isAuthenticated = true;
+          // Setelah login sukses, langsung ambil data profil user
+          await loadProfile();
+          print('[AUTH] Login success: $username');
+        }
       } else {
         _isAuthenticated = false;
         _errorMessage = response['message'] ?? 'Login failed';
@@ -120,6 +150,18 @@ class AuthProvider with ChangeNotifier {
 
   /// Ambil data profil user dari backend
   Future<void> loadProfile() async {
+    // In dummy mode, use the in-memory profile set at login to avoid auto-admin profile.
+    if (DummyDataService.USE_DUMMY_DATA) {
+      if (_userProfile != null) {
+        notifyListeners();
+        return;
+      }
+      _isAuthenticated = false;
+      _userProfile = null;
+      notifyListeners();
+      return;
+    }
+
     try {
       final profile = await ApiService.instance.getProfile();
       print('[AUTH] Loaded profile: ${profile.toJson()}');

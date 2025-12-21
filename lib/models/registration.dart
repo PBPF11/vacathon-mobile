@@ -49,6 +49,12 @@ class EventRegistration {
   });
 
   factory EventRegistration.fromJson(Map<String, dynamic> json) {
+    int? categoryId;
+    final rawCategory = json['category'] ?? json['category_id'];
+    if (rawCategory != null) {
+      categoryId = int.tryParse(rawCategory.toString());
+    }
+
     return EventRegistration(
       id: json['id']?.toString() ?? "0",
       referenceCode: json['reference_code'] ?? "",
@@ -66,11 +72,16 @@ class EventRegistration {
       
       // Tambahkan fallback untuk field yang mungkin gak ada di JSON detail
       emergencyContactPhone: json['emergency_contact_phone'] ?? "", 
-      
+
+      categoryId: categoryId,
+      categoryDisplayName: json['category_display_name'],
+      medicalNotes: json['medical_notes'],
       status: json['status'] ?? "pending",
       paymentStatus: json['payment_status'] ?? "unpaid",
       
       formPayload: json['form_payload'] ?? {},
+      decisionNote: json['decision_note'],
+      bibNumber: json['bib_number'],
       
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
@@ -78,6 +89,12 @@ class EventRegistration {
       updatedAt: json['updated_at'] != null 
           ? DateTime.parse(json['updated_at']) 
           : DateTime.now(),
+      confirmedAt: json['confirmed_at'] != null
+          ? DateTime.parse(json['confirmed_at'])
+          : null,
+      cancelledAt: json['cancelled_at'] != null
+          ? DateTime.parse(json['cancelled_at'])
+          : null,
     );
   }
 

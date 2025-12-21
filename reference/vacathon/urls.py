@@ -23,7 +23,6 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),
     path('', include('core.urls')),
     path('events/', include('events.urls')),
@@ -32,6 +31,9 @@ urlpatterns = [
     path('profile/', include('profiles.urls')),
     path('register/', include('registrations.urls')),
     path('notifications/', include('notifications.urls')),
+    path('admin/events/api/', include('events.admin_api_urls')),
+    path('admin/participants/api/', include('registrations.admin_api_urls')),
+    path('admin/', admin.site.urls),
     # API endpoints
     path('api/', include('core.api_urls')),
     path('api/events/', include('events.api_urls')),
