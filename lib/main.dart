@@ -10,6 +10,7 @@ import 'screens/events_screen.dart';
 import 'screens/admin_event_management_screen.dart';
 import 'screens/admin_participant_management_screen.dart';
 import 'screens/admin_forum_moderation_screen.dart';
+import 'screens/profile_screen.dart';
 
 // App Colors
 const Color primaryGreen = Color(0xFFB9F61E);
@@ -119,6 +120,7 @@ class MyApp extends StatelessWidget {
         '/admin/participants': (context) =>
             const AdminParticipantManagementScreen(),
         '/admin/forum': (context) => const AdminForumModerationScreen(),
+        '/profile/edit': (context) => const ProfileScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );

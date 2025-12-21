@@ -201,7 +201,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Notification icon
+                    // 1. BAGIAN ICON KIRI (Kategori)
                     Container(
                       width: 40,
                       height: 40,
@@ -218,12 +218,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                     const SizedBox(width: 12),
 
-                    // Notification content
+                    // 2. BAGIAN KONTEN TENGAH (Judul, Pesan, Waktu)
+                    // PENTING: Harus dibungkus Expanded agar mengisi ruang kosong
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title and unread indicator
+                          // Row untuk Judul dan Titik Unread
                           Row(
                             children: [
                               Expanded(
@@ -242,6 +243,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ),
                               if (!notification.isRead)
                                 Container(
+                                  margin: const EdgeInsets.only(left: 8),
                                   width: 8,
                                   height: 8,
                                   decoration: const BoxDecoration(
@@ -254,7 +256,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                           const SizedBox(height: 4),
 
-                          // Message
+                          // Pesan Notifikasi
                           Text(
                             notification.message,
                             style: TextStyle(
@@ -266,7 +268,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
                           const SizedBox(height: 8),
 
-                          // Category and timestamp
+                          // Kategori dan Waktu
                           Row(
                             children: [
                               Container(
@@ -298,16 +300,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
 
-                    // Action button
-                    if (notification.linkUrl != null)
-                      IconButton(
-                        icon: Icon(
-                          Icons.arrow_forward_ios,
-                          size: 16,
-                          color: textColor.withOpacity(0.4),
-                        ),
-                        onPressed: () => _handleNotificationTap(notification),
-                      ),
+                    const SizedBox(width: 8),
+
+                    // 3. BAGIAN TOMBOL KANAN (Mark as Read & Panah)
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Tombol Mark as Read (Ceklis Hijau)
+                        if (!notification.isRead)
+                          IconButton(
+                            icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 22),
+                            tooltip: 'Mark as read',
+                            onPressed: () => _markAsRead(notification.id),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        
+                        const SizedBox(height: 8),
+
+                        // Tombol Panah Navigasi
+                        if (notification.linkUrl != null)
+                          IconButton(
+                            icon: Icon(
+                              Icons.arrow_forward_ios,
+                              size: 14,
+                              color: textColor.withOpacity(0.4),
+                            ),
+                            onPressed: () => _handleNotificationTap(notification),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -318,34 +342,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _handleNotificationTap(models.Notification notification) {
+  void _handleNotificationTap(models.Notification notification) async {
     print('[ACTION] Notification tapped: ${notification.id}');
-  
-    // 1. Otomatis tandai sudah dibaca di backend jika belum read
+    
     if (!notification.isRead) {
-      _markAsRead(notification.id);
+      await _apiService!.markNotificationRead(notification.id);
+    }
+    // 1. Kirim perintah ke Django untuk menandai terbaca
+    if (!notification.isRead) {
+      try {
+        await _markAsRead(notification.id); // Fungsi ini sudah ada di file lo
+      } catch (e) {
+        print('Gagal menandai terbaca: $e');
+      }
     }
 
+    // 2. Logika Navigasi (tetap seperti yang sudah kita buat)
     final linkUrl = notification.linkUrl;
-    
-    // 2. Logika Navigasi
     if (linkUrl != null && linkUrl.contains('/registrations/')) {
-      // Ekstrak kode 'VAC-XXXX'
       final segments = linkUrl.split('/').where((s) => s.isNotEmpty).toList();
-      if (segments.isNotEmpty) {
-        final refCode = segments.last;
+      final refCode = segments.last;
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RegistrationDetailScreen(referenceCode: refCode),
-          ),
-        );
-      }
-    } else {
-      // Fallback jika link tidak dikenal atau null
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Notification: ${notification.title}')),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RegistrationDetailScreen(referenceCode: refCode),
+        ),
       );
     }
   }

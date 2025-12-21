@@ -137,10 +137,7 @@ class ApiService {
     }
   }
 
-  Map<String, dynamic> _decodeJsonResponse(
-    http.Response response,
-    String url,
-  ) {
+  Map<String, dynamic> _decodeJsonResponse(http.Response response, String url) {
     final body = response.body;
     final trimmed = body.trimLeft();
 
@@ -157,7 +154,7 @@ class ApiService {
         'status': false,
         'message':
             'Server returned HTML from $url (status ${response.statusCode}). '
-                'Check API_BASE_URL ($baseUrl) or backend routing.',
+            'Check API_BASE_URL ($baseUrl) or backend routing.',
       };
     }
 
@@ -176,7 +173,7 @@ class ApiService {
         'status': false,
         'message':
             'Invalid JSON from $url (status ${response.statusCode}). '
-                'Check backend logs.',
+            'Check backend logs.',
       };
     }
   }
@@ -216,7 +213,7 @@ class ApiService {
         'status': false,
         'message':
             'Login failed. Server returned a non-JSON response from $baseUrl. '
-                'Check API_BASE_URL or backend logs.',
+            'Check API_BASE_URL or backend logs.',
       };
     }
   }
@@ -233,17 +230,11 @@ class ApiService {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-        }),
+        body: jsonEncode({'username': username, 'password': password}),
       );
       return _decodeJsonResponse(response, uri.toString());
     } catch (e) {
-      return {
-        'status': false,
-        'message': 'Registration failed: $e',
-      };
+      return {'status': false, 'message': 'Registration failed: $e'};
     }
   }
 
@@ -392,6 +383,7 @@ class ApiService {
     }
     return null;
   }
+
   Future<UserProfile> updateProfile(Map<String, dynamic> profileData) async {
     // Endpoint yang baru kita buat di backend
     final response = await post('/profile/api/profile/update/', profileData);
@@ -520,6 +512,13 @@ class ApiService {
     // NEW Check urls.py: path("posts/<int:post_id>/like/", toggle_like, name="post-like")
     // Prefix 'forum/' -> '/forum/posts/$postId/like/'
     await post('/forum/posts/$postId/like/', {});
+  }
+
+  Future<Map<String, dynamic>> reportPost(int postId, String reason) async {
+    final response = await post('/forum/posts/$postId/report/', {
+      'reason': reason,
+    });
+    return response;
   }
 
   Future<void> deleteThread(String slug) async {
@@ -691,7 +690,7 @@ class ApiService {
   }
 
   Future<void> markNotificationRead(int id) async {
-    await post('/profile/api/notifications/$id/read/', {});
+    await post('/notifications/api/$id/read/', {});
   }
 
   Future<void> markAllNotificationsRead() async {
@@ -777,31 +776,31 @@ class ApiService {
   }
 
   /// Get reported posts for moderation
-  Future<Map<String, dynamic>> getReportedPosts({int page = 1}) async {
+  Future<Map<String, dynamic>> getReports({int page = 1}) async {
     try {
       final data = await get(
-        '/admin/api/forum/reports/',
+        '/forum/api/reports/',
         queryParams: {'page': page.toString()},
       );
       return data;
     } catch (e) {
       // Return dummy data if API not implemented
-      return {'results': [], 'total_reports': 0};
+      return {'results': [], 'total': 0};
     }
+  }
+
+  /// Resolve a report
+  Future<void> resolveReport(int reportId) async {
+    await post('/forum/api/reports/$reportId/resolve/', {});
   }
 
   /// Delete a post (admin moderation)
   Future<void> deletePostAdmin(int postId) async {
-    await delete('/admin/api/forum/posts/$postId/');
+    await delete('/forum/api/posts/$postId/delete/');
   }
 
   /// Pin/unpin a thread (admin moderation)
   Future<void> toggleThreadPin(int threadId) async {
     await post('/admin/api/forum/threads/$threadId/toggle-pin/', {});
-  }
-
-  /// Resolve a report (admin moderation)
-  Future<void> resolveReport(int reportId) async {
-    await post('/admin/api/forum/reports/$reportId/resolve/', {});
   }
 }

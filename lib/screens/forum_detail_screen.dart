@@ -636,11 +636,113 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 16),
+              // Report Button
+              InkWell(
+                onTap: () => _reportPost(post),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.flag_outlined,
+                        size: 16,
+                        color: textColor.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Report',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textColor.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _reportPost(ForumPost post) async {
+    final reasonController = TextEditingController();
+    final shouldReport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Let us know why this post should be reviewed:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Reason (e.g. spam, harassment)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldReport == true) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please provide a reason.')),
+          );
+        }
+        return;
+      }
+      try {
+        final response = await ApiService.instance.reportPost(post.id, reason);
+        if (mounted) {
+          if (response['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Report submitted. Thank you for keeping the forum safe.',
+                ),
+              ),
+            );
+          } else {
+            final message = response['message'] ?? 'Failed to submit report.';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit report: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildReplyInput() {
