@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../models/models.dart';
 import '../services/api_service.dart';
 
 // CSS Variables from reference
@@ -14,61 +13,63 @@ class AdminForumModerationScreen extends StatefulWidget {
   const AdminForumModerationScreen({super.key});
 
   @override
-  State<AdminForumModerationScreen> createState() => _AdminForumModerationScreenState();
+  State<AdminForumModerationScreen> createState() =>
+      _AdminForumModerationScreenState();
 }
 
-class _AdminForumModerationScreenState extends State<AdminForumModerationScreen> {
-  List<ForumThread> _threads = [];
+class _AdminForumModerationScreenState
+    extends State<AdminForumModerationScreen> {
+  List<dynamic> _reports = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadThreads();
+    _loadReports();
   }
 
-  Future<void> _loadThreads() async {
+  Future<void> _loadReports() async {
     try {
-      final response = await ApiService.instance.getThreads();
+      final response = await ApiService.instance.getReports();
       setState(() {
-        _threads = response.threads;
+        _reports = response['results'] ?? [];
         _isLoading = false;
       });
     } catch (e) {
-      print('[ADMIN] Failed to load threads: $e');
+      print('[ADMIN] Failed to load reports: $e');
       setState(() {
         _isLoading = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load threads: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load reports: $e')));
       }
     }
   }
 
-  Future<void> _pinThread(ForumThread thread) async {
+  Future<void> _resolveReport(int reportId) async {
     try {
-      // For now, we'll just show a message since the API might not be implemented
-      final newStatus = thread.isPinned ? 'unpinned' : 'pinned';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Thread "${thread.title}" $newStatus (API not implemented)')),
-      );
-      // Reload threads
-      await _loadThreads();
+      await ApiService.instance.resolveReport(reportId);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Report resolved')));
+      await _loadReports();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pin thread: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to resolve report: $e')));
     }
   }
 
-  Future<void> _deleteThread(ForumThread thread) async {
+  Future<void> _deletePost(int postId, int reportId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Thread'),
-        content: Text('Are you sure you want to delete "${thread.title}"? This action cannot be undone.'),
+        title: const Text('Delete Post'),
+        content: const Text(
+          'Are you sure you want to delete this post? This action cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -86,16 +87,16 @@ class _AdminForumModerationScreenState extends State<AdminForumModerationScreen>
     if (confirm != true) return;
 
     try {
-      // For now, we'll just show a message since the API might not be implemented
+      // First delete the post
+      await ApiService.instance.deletePostAdmin(postId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Thread "${thread.title}" deleted (API not implemented)')),
+        const SnackBar(content: Text('Post deleted successfully')),
       );
-      // Reload threads
-      await _loadThreads();
+      await _loadReports();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete thread: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to delete post: $e')));
     }
   }
 
@@ -109,188 +110,177 @@ class _AdminForumModerationScreenState extends State<AdminForumModerationScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : _threads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.forum_outlined, size: 64, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No forum threads found',
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Threads will appear here once users start discussions',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
+          : _reports.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle_outline,
+                    size: 64,
+                    color: Colors.green[300],
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _threads.length,
-                  itemBuilder: (context, index) {
-                    final thread = _threads[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: whiteColor,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: darkColor.withOpacity(0.1),
-                            blurRadius: 26,
-                            offset: const Offset(0, 12),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          if (thread.isPinned)
-                                            Container(
-                                              margin: const EdgeInsets.only(right: 8),
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: accentColor.withOpacity(0.3),
-                                                borderRadius: BorderRadius.circular(4),
-                                              ),
-                                              child: const Text(
-                                                'PINNED',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: darkColor,
-                                                ),
-                                              ),
-                                            ),
-                                          Expanded(
-                                            child: Text(
-                                              thread.title,
-                                              style: const TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: primaryColor,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'by ${thread.authorUsername} · ${_formatDate(thread.createdAt)}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textColor.withOpacity(0.6),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: thread.isLocked ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    thread.isLocked ? 'LOCKED' : 'OPEN',
-                                    style: TextStyle(
-                                      color: thread.isLocked ? Colors.red : Colors.green,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              thread.body,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: textColor.withOpacity(0.7),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.remove_red_eye_outlined, size: 16, color: textColor.withOpacity(0.5)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${thread.viewCount} views',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: textColor.withOpacity(0.6),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Icon(Icons.chat_bubble_outline, size: 16, color: textColor.withOpacity(0.5)),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '8 replies', // Placeholder since we don't have post count in Thread model
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: textColor.withOpacity(0.6),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                TextButton.icon(
-                                  onPressed: () => _pinThread(thread),
-                                  icon: Icon(
-                                    thread.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                                    size: 16,
-                                  ),
-                                  label: Text(thread.isPinned ? 'Unpin' : 'Pin'),
-                                ),
-                                const SizedBox(width: 8),
-                                TextButton.icon(
-                                  onPressed: () {
-                                    // TODO: Navigate to thread detail for moderation
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('View thread "${thread.title}" coming soon')),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.visibility, size: 16),
-                                  label: const Text('View'),
-                                ),
-                                const SizedBox(width: 8),
-                                TextButton.icon(
-                                  onPressed: () => _deleteThread(thread),
-                                  icon: const Icon(Icons.delete_outline, size: 16),
-                                  label: const Text('Delete'),
-                                  style: TextButton.styleFrom(foregroundColor: Colors.red),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'All clear!',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No pending reports to review.',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _reports.length,
+              itemBuilder: (context, index) {
+                final report = _reports[index];
+                return _buildReportItem(report);
+              },
+            ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  Widget _buildReportItem(dynamic report) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: whiteColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: darkColor.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.flag, size: 16, color: Colors.red),
+                const SizedBox(width: 8),
+                Text(
+                  'Reported by ${report['reporter']}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _formatDate(report['created_at']),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Reason:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+                Text(
+                  report['reason'],
+                  style: const TextStyle(fontSize: 14, color: textColor),
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
+                const Text(
+                  'Post Content:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: textColor,
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    report['post_content'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor.withOpacity(0.8),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Author: ${report['post_author']}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: textColor.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Actions
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => _resolveReport(report['id']),
+                  child: const Text('Resolve'),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () => _deletePost(report['post_id'], report['id']),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete Post'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (_) {
+      return dateStr;
+    }
   }
 }

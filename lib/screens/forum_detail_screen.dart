@@ -718,11 +718,22 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
         return;
       }
       try {
-        await ApiService.instance.reportPost(post.id, reason);
+        final response = await ApiService.instance.reportPost(post.id, reason);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Report submitted. Thank you.')),
-          );
+          if (response['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Report submitted. Thank you for keeping the forum safe.',
+                ),
+              ),
+            );
+          } else {
+            final message = response['message'] ?? 'Failed to submit report.';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          }
         }
       } catch (e) {
         if (mounted) {
