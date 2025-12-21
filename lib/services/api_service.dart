@@ -1,5 +1,8 @@
 import 'dart:convert';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:pbp_django_auth/pbp_django_auth.dart';
 import '../models/models.dart';
 import 'dummy_data_service.dart';
@@ -181,6 +184,96 @@ class ApiService {
     }
   }
 
+  String _formatErrors(dynamic errors) {
+    if (errors is Map) {
+      final parts = <String>[];
+      errors.forEach((key, value) {
+        if (value is List) {
+          parts.add('$key: ${value.join(' ')}');
+        } else if (value != null) {
+          parts.add('$key: $value');
+        }
+      });
+      if (parts.isNotEmpty) {
+        return parts.join(' ');
+      }
+    }
+    return errors?.toString() ?? 'Request failed.';
+  }
+
+  Future<Map<String, dynamic>> _sendMultipart(
+    String endpoint,
+    Map<String, dynamic> fields,
+    XFile file, {
+    String method = 'POST',
+  }) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    await request.init();
+
+    final requestHeaders = <String, String>{};
+    final cookieHeader = request.headers['cookie'];
+    if (cookieHeader != null && cookieHeader.isNotEmpty) {
+      requestHeaders['cookie'] = cookieHeader;
+    }
+
+    final multipartRequest = http.MultipartRequest(method, url)
+      ..headers.addAll(requestHeaders);
+
+    fields.forEach((key, value) {
+      if (value == null) return;
+      if (value is List || value is Map) {
+        multipartRequest.fields[key] = jsonEncode(value);
+      } else {
+        multipartRequest.fields[key] = value.toString();
+      }
+    });
+
+    if (kIsWeb) {
+      final bytes = await file.readAsBytes();
+      multipartRequest.files.add(
+        http.MultipartFile.fromBytes(
+          'banner_image',
+          bytes,
+          filename: file.name,
+        ),
+      );
+    } else {
+      multipartRequest.files.add(
+        await http.MultipartFile.fromPath(
+          'banner_image',
+          file.path,
+          filename: file.name,
+        ),
+      );
+    }
+
+    final response = await multipartRequest.send();
+    final responseBody = await response.stream.bytesToString();
+    if (responseBody.trim().isEmpty) {
+      throw Exception(
+        'Server returned an empty response from $url (status ${response.statusCode}).',
+      );
+    }
+
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map<String, dynamic>) {
+        if (decoded.containsKey('errors')) {
+          throw Exception(_formatErrors(decoded['errors']));
+        }
+        return decoded;
+      }
+      throw Exception(
+        'Unexpected JSON response from $url (status ${response.statusCode}).',
+      );
+    } catch (_) {
+      throw Exception(
+        'Server returned non-JSON response from $url (status ${response.statusCode}). '
+        'Check API_BASE_URL or backend auth.',
+      );
+    }
+  }
+
   // --- Authentication methods ---
 
   Future<Map<String, dynamic>> login(String username, String password) async {
@@ -283,26 +376,99 @@ class ApiService {
 
     // Admin endpoint for managing events
     final query = {'page': page.toString(), ...?filters};
-    final data = await get('/admin/events/api/', queryParams: query);
-    return EventsResponse.fromJson(data);
+    try {
+      final data = await get('/admin/events/api/', queryParams: query);
+      return EventsResponse.fromJson(data);
+    } catch (e) {
+      // Fallback to dummy data if backend endpoint is unavailable or returns HTML/login page
+      print('[API] getAdminEvents fallback to dummy data: $e');
+      return DummyDataService.getAdminEvents(page: page, filters: filters);
+    }
   }
 
-  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+  Future<List<EventCategory>> getEventCategories() async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.getEventCategories();
+    }
+
+    try {
+      final data = await get('/admin/events/api/categories/');
+      final results = (data['results'] as List? ?? [])
+          .map((item) => EventCategory.fromJson(item))
+          .toList();
+      return results;
+    } catch (e) {
+      print('[API] getEventCategories fallback to dummy data: $e');
+      return DummyDataService.getEventCategories();
+    }
+  }
+
+  Future<Event> createEventAdmin(Map<String, dynamic> eventData) async {
     if (DummyDataService.USE_DUMMY_DATA) {
       return DummyDataService.createEvent(eventData);
     }
 
     final data = await post('/admin/events/api/', eventData);
+    if (data is Map<String, dynamic> && data.containsKey('errors')) {
+      throw Exception(_formatErrors(data['errors']));
+    }
     return Event.fromJson(data);
   }
 
-  Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+  Future<Event> updateEventAdmin(
+    int eventId,
+    Map<String, dynamic> eventData,
+  ) async {
     if (DummyDataService.USE_DUMMY_DATA) {
       return DummyDataService.updateEvent(eventId, eventData);
     }
 
     final data = await put('/admin/events/api/$eventId/', eventData);
+    if (data is Map<String, dynamic> && data.containsKey('errors')) {
+      throw Exception(_formatErrors(data['errors']));
+    }
     return Event.fromJson(data);
+  }
+
+  Future<Event> createEventWithImage(
+    Map<String, dynamic> eventData,
+    XFile image,
+  ) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.createEvent(eventData);
+    }
+
+    final data = await _sendMultipart(
+      '/admin/events/api/',
+      eventData,
+      image,
+    );
+    return Event.fromJson(data);
+  }
+
+  Future<Event> updateEventWithImage(
+    int eventId,
+    Map<String, dynamic> eventData,
+    XFile image,
+  ) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.updateEvent(eventId, eventData);
+    }
+
+    final data = await _sendMultipart(
+      '/admin/events/api/$eventId/',
+      eventData,
+      image,
+    );
+    return Event.fromJson(data);
+  }
+
+  Future<Event> createEvent(Map<String, dynamic> eventData) async {
+    return createEventAdmin(eventData);
+  }
+
+  Future<Event> updateEvent(int eventId, Map<String, dynamic> eventData) async {
+    return updateEventAdmin(eventId, eventData);
   }
 
   Future<void> deleteEvent(int eventId) async {
@@ -310,7 +476,7 @@ class ApiService {
       return DummyDataService.deleteEvent(eventId);
     }
 
-    await delete('/admin/events/api/$eventId/');
+    await post('/admin/events/api/$eventId/delete/', {});
   }
 
   Future<Event> getEvent(int id) async {
@@ -535,6 +701,43 @@ class ApiService {
     if (response['status'] != true) {
       throw Exception(response['message'] ?? 'Failed to delete post');
     }
+  }
+
+  // --- Admin Registrations API ---
+
+  Future<RegistrationsResponse> getAdminRegistrations({
+    int page = 1,
+    Map<String, String>? filters,
+  }) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.getAdminRegistrations(page: page, filters: filters);
+    }
+    final query = {'page': page.toString(), ...?filters};
+    try {
+      final data = await get('/admin/participants/api/', queryParams: query);
+      return RegistrationsResponse.fromJson(data);
+    } catch (e) {
+      print('[API] getAdminRegistrations fallback to dummy data: $e');
+      return DummyDataService.getAdminRegistrations(page: page, filters: filters);
+    }
+  }
+
+  Future<EventRegistration> confirmAdminRegistration(String registrationId) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.confirmAdminRegistration(registrationId);
+    }
+    final data = await post(
+      '/admin/participants/api/$registrationId/confirm/',
+      {},
+    );
+    return EventRegistration.fromJson(data);
+  }
+
+  Future<void> deleteAdminRegistration(String registrationId) async {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.deleteAdminRegistration(registrationId);
+    }
+    await post('/admin/participants/api/$registrationId/delete/', {});
   }
 
   // --- Registrations API ---

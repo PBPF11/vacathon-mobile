@@ -7,6 +7,9 @@ import 'package:pbp_django_auth/pbp_django_auth.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/events_screen.dart';
+import 'screens/admin_dashboard_screen.dart';
+import 'screens/admin_event_management_screen.dart';
+import 'screens/admin_participant_management_screen.dart';
 
 // App Colors
 const Color primaryGreen = Color(0xFFB9F61E);
@@ -111,6 +114,10 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/register': (context) => const RegisterScreen(),
+        '/admin': (context) => const AdminDashboardScreen(),
+        '/admin/events': (context) => const AdminEventManagementScreen(),
+        '/admin/participants': (context) =>
+            const AdminParticipantManagementScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 import 'event_detail_screen.dart';
@@ -315,6 +317,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final profile = authProvider.userProfile;
+    final isAdmin = profile?.isStaff == true || profile?.isSuperuser == true;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = _contentMaxWidth(constraints.maxWidth);
@@ -325,6 +331,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             backgroundColor: primaryColor,
             elevation: 0,
             centerTitle: true,
+            actions: [
+              if (isAdmin)
+                IconButton(
+                  tooltip: 'Admin Dashboard',
+                  onPressed: () => Navigator.of(context).pushNamed('/admin'),
+                  icon: const Icon(Icons.admin_panel_settings),
+                ),
+            ],
           ),
           body: Stack(
             children: [
@@ -360,7 +374,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.2, delay: 60.ms),
                               const SizedBox(height: 20),
-                              _buildQuickNav()
+                              _buildQuickNav(isAdmin)
                                   .animate()
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.15, delay: 100.ms),
@@ -1128,7 +1142,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  Widget _buildQuickNav() {
+  Widget _buildQuickNav(bool isAdmin) {
     return _buildSurfaceCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1184,6 +1198,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     icon: Icons.notifications,
                     onTap: () => widget.onNavigate(4),
                   ),
+                  if (isAdmin)
+                    _buildNavCard(
+                      label: 'Admin Dashboard',
+                      icon: Icons.admin_panel_settings,
+                      onTap: () => Navigator.of(context).pushNamed('/admin'),
+                    ),
                 ],
               );
             },

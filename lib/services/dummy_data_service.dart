@@ -4,7 +4,8 @@ import '../models/models.dart';
 /// EASY TO REMOVE: Replace all method calls with real API calls
 /// All dummy data is contained here for easy replacement
 class DummyDataService {
-  static const bool USE_DUMMY_DATA = false; // Set to false to use real API
+  // Toggle dummy data globally. Set to false only when backend APIs are ready.
+  static const bool USE_DUMMY_DATA = true; // Set to false to use real API
 
   // Dummy Events Data
   static final List<Event> _dummyEvents = [
@@ -747,6 +748,23 @@ class DummyDataService {
   }
 
   // Admin Events Methods
+  static Future<List<EventCategory>> getEventCategories() async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    final categoryMap = <int, EventCategory>{};
+    for (final event in _dummyEvents) {
+      for (final category in event.categories) {
+        categoryMap[category.id] = category;
+      }
+    }
+
+    final categories = categoryMap.values.toList()
+      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    return categories;
+  }
+
   static Future<EventsResponse> getAdminEvents({
     int page = 1,
     int pageSize = 20,
@@ -918,6 +936,106 @@ class DummyDataService {
     print('[DUMMY] deleteEvent called with id: $eventId');
 
     _dummyEvents.removeWhere((e) => e.id == eventId);
+  }
+
+  static Future<RegistrationsResponse> getAdminRegistrations({
+    int page = 1,
+    int pageSize = 20,
+    Map<String, String>? filters,
+  }) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    var filtered = List<EventRegistration>.from(_dummyRegistrations);
+    if (filters != null) {
+      final status = filters['status'];
+      if (status != null && status.isNotEmpty) {
+        filtered = filtered.where((r) => r.status == status).toList();
+      }
+      final eventFilter = filters['event'];
+      if (eventFilter != null && eventFilter.isNotEmpty) {
+        filtered = filtered
+            .where((r) => r.event.id.toString() == eventFilter)
+            .toList();
+      }
+      final search = filters['q'] ?? filters['search'];
+      if (search != null && search.isNotEmpty) {
+        final query = search.toLowerCase();
+        filtered = filtered
+            .where(
+              (r) =>
+                  r.userUsername.toLowerCase().contains(query) ||
+                  r.event.title.toLowerCase().contains(query),
+            )
+            .toList();
+      }
+    }
+
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    final startIndex = (page - 1) * pageSize;
+    final endIndex = startIndex + pageSize;
+    final paginated = filtered.sublist(
+      startIndex,
+      endIndex > filtered.length ? filtered.length : endIndex,
+    );
+
+    return RegistrationsResponse(
+      registrations: paginated,
+      total: filtered.length,
+      hasNext: endIndex < filtered.length,
+    );
+  }
+
+  static Future<EventRegistration> confirmAdminRegistration(
+    String registrationId,
+  ) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    final index =
+        _dummyRegistrations.indexWhere((r) => r.id == registrationId);
+    if (index == -1) {
+      throw Exception('Registration not found');
+    }
+
+    final existing = _dummyRegistrations[index];
+    final updated = EventRegistration(
+      id: existing.id,
+      referenceCode: existing.referenceCode,
+      userId: existing.userId,
+      userUsername: existing.userUsername,
+      event: existing.event,
+      categoryId: existing.categoryId,
+      categoryDisplayName: existing.categoryDisplayName,
+      distanceLabel: existing.distanceLabel,
+      phoneNumber: existing.phoneNumber,
+      emergencyContactName: existing.emergencyContactName,
+      emergencyContactPhone: existing.emergencyContactPhone,
+      medicalNotes: existing.medicalNotes,
+      status: 'confirmed',
+      paymentStatus: existing.paymentStatus,
+      formPayload: existing.formPayload,
+      decisionNote: existing.decisionNote,
+      bibNumber: existing.bibNumber,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+      confirmedAt: DateTime.now(),
+      cancelledAt: existing.cancelledAt,
+    );
+
+    _dummyRegistrations[index] = updated;
+    return updated;
+  }
+
+  static Future<void> deleteAdminRegistration(String registrationId) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    _dummyRegistrations.removeWhere((r) => r.id == registrationId);
   }
 
   // Registration functionality
