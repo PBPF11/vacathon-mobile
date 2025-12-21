@@ -691,7 +691,7 @@ class ApiService {
   }
 
   Future<void> markNotificationRead(int id) async {
-    await post('/profile/api/notifications/$id/read/', {});
+    await post('/notifications/api/$id/read/', {});
   }
 
   Future<void> markAllNotificationsRead() async {

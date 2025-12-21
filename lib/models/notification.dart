@@ -103,7 +103,7 @@ class NotificationsResponse {
           .toList(),
       total: json['total'] ?? 0,
       hasNext: json['has_next'] ?? false,
-      unreadCount: json['unread_count'] ?? 0,
+      unreadCount: json['unread'] ?? 0,
     );
   }
 }
