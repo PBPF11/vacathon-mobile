@@ -1,3 +1,5 @@
+# Video promosi + demo: https://www.youtube.com/watch?v=08mi9FVAFxM
+
 # Plan/Perencanaan Per pekan per individu
 
 17-24 November
