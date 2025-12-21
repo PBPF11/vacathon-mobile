@@ -860,11 +860,20 @@ class _ForumScreenState extends State<ForumScreen> {
   Future<void> _submitThread(Event event, String title, String body) async {
     try {
       if (DummyDataService.USE_DUMMY_DATA) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Thread creation disabled in dummy mode'),
-          ),
+        final thread = await DummyDataService.createThread(
+          event.id,
+          title,
+          body,
+          authorUsername: _currentUser?.username ?? 'you',
         );
+        setState(() {
+          _threads.insert(0, thread);
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Thread created (dummy data)')),
+          );
+        }
         return;
       }
 

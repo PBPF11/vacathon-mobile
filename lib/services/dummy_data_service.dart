@@ -666,6 +666,103 @@ class DummyDataService {
     );
   }
 
+  static Future<ForumPost> addPost(
+    String threadSlug,
+    String content, {
+    int? parentId,
+    String authorUsername = 'you',
+  }) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    final thread = _dummyThreads.firstWhere(
+      (t) => t.slug == threadSlug,
+      orElse: () => _dummyThreads.first,
+    );
+    final newId =
+        _dummyPosts.isNotEmpty ? _dummyPosts.map((p) => p.id).reduce((a, b) => a > b ? a : b) + 1 : 1;
+    final now = DateTime.now();
+    final post = ForumPost(
+      id: newId,
+      threadId: thread.id,
+      authorId: 'dummy',
+      authorUsername: authorUsername,
+      parentId: parentId,
+      content: content,
+      createdAt: now,
+      updatedAt: now,
+      likesCount: 0,
+      isLikedByUser: false,
+    );
+    _dummyPosts.add(post);
+
+    // Update thread metadata
+    final tIndex = _dummyThreads.indexWhere((t) => t.id == thread.id);
+    if (tIndex != -1) {
+      final updated = ForumThread(
+        id: thread.id,
+        eventId: thread.eventId,
+        eventTitle: thread.eventTitle,
+        authorId: thread.authorId,
+        authorUsername: thread.authorUsername,
+        title: thread.title,
+        slug: thread.slug,
+        body: thread.body,
+        createdAt: thread.createdAt,
+        updatedAt: now,
+        lastActivityAt: now,
+        isPinned: thread.isPinned,
+        isLocked: thread.isLocked,
+        viewCount: thread.viewCount,
+        postCount: thread.postCount + 1,
+      );
+      _dummyThreads[tIndex] = updated;
+    }
+
+    return post;
+  }
+
+  static Future<ForumThread> createThread(
+    int eventId,
+    String title,
+    String body, {
+    String authorUsername = 'you',
+  }) async {
+    if (!USE_DUMMY_DATA) {
+      throw UnimplementedError('Real API not implemented');
+    }
+
+    final event = _dummyEvents.firstWhere(
+      (e) => e.id == eventId,
+      orElse: () => _dummyEvents.first,
+    );
+    final newId =
+        _dummyThreads.isNotEmpty ? _dummyThreads.map((t) => t.id).reduce((a, b) => a > b ? a : b) + 1 : 1;
+    final slugBase = title.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(RegExp(r'-+'), '-').trim();
+    final slug = slugBase.endsWith('-') ? slugBase.substring(0, slugBase.length - 1) : slugBase;
+    final now = DateTime.now();
+    final thread = ForumThread(
+      id: newId,
+      eventId: event.id,
+      eventTitle: event.title,
+      authorId: 'dummy',
+      authorUsername: authorUsername,
+      title: title,
+      slug: slug.isEmpty ? 'thread-$newId' : slug,
+      body: body,
+      createdAt: now,
+      updatedAt: now,
+      lastActivityAt: now,
+      isPinned: false,
+      isLocked: false,
+      viewCount: 1,
+      postCount: 0,
+    );
+    _dummyThreads.insert(0, thread);
+    return thread;
+  }
+
   static Future<RegistrationsResponse> getMyRegistrations({
     int page = 1,
     int pageSize = 20,

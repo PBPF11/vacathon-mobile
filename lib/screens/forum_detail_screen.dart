@@ -148,9 +148,19 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
     setState(() => _isSubmitting = true);
     try {
       if (DummyDataService.USE_DUMMY_DATA) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reply disabled in dummy mode')),
+        final newPost = await DummyDataService.addPost(
+          _thread.slug,
+          content,
+          parentId: _replyingTo?.id,
+          authorUsername: _currentUser?.username ?? 'you',
         );
+        _replyController.clear();
+        _setReplyTo(null);
+        _replyFocusNode.unfocus();
+        setState(() {
+          _posts.add(newPost);
+          _organizedPosts.add(ThreadedPost(newPost, _replyingTo == null ? 0 : 1));
+        });
       } else {
         await ApiService.instance.createPost(
           _thread.slug,
