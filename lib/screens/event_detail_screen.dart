@@ -920,6 +920,11 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
       return;
     }
 
+    // Fallback: if emergency phone empty, reuse main phone number to unblock submission.
+    final emergencyPhone = _emergencyPhoneController.text.trim().isEmpty
+        ? _phoneController.text.trim()
+        : _emergencyPhoneController.text.trim();
+
     setState(() {
       _isSubmitting = true;
     });
@@ -929,7 +934,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
       final Map<String, dynamic> registrationData = {
         'phone_number': _phoneController.text.trim(),
         'emergency_contact_name': _emergencyNameController.text.trim(),
-        'emergency_contact_phone': _emergencyPhoneController.text.trim(),
+        'emergency_contact_phone': emergencyPhone,
         'medical_notes': _medicalNotesController.text.trim(),
       };
 
@@ -1228,15 +1233,13 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
                       horizontal: 16,
                       vertical: 12,
                     ),
-                  ),
-                  keyboardType: TextInputType.phone,
+                ),
+                keyboardType: TextInputType.phone,
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter emergency contact phone';
-                    }
+                    // Allow empty input in dummy mode; it will reuse main phone.
                     return null;
                   },
-                ),
+              ),
 
                 const SizedBox(height: 20),
 
