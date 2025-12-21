@@ -169,6 +169,11 @@ class _ForumScreenState extends State<ForumScreen> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showCreateThreadDialog,
+        backgroundColor: primaryColor,
+        child: const Icon(Icons.add),
+      ),
     );
   }
 
@@ -281,7 +286,8 @@ class _ForumScreenState extends State<ForumScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<Event?>(
-                    value: _selectedEventFilter != null &&
+                    value:
+                        _selectedEventFilter != null &&
                             _events.contains(_selectedEventFilter)
                         ? _selectedEventFilter
                         : null,
