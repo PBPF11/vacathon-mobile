@@ -399,7 +399,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => EventDetailScreen(slug: slug),
+          builder: (context) => EventDetailScreen(
+            event: Event(
+              id: 0,
+              title: '',
+              slug: slug,
+              description: '',
+              city: '',
+              country: '',
+              startDate: DateTime.now(),
+              registrationDeadline: DateTime.now(),
+              status: '',
+              popularityScore: 0,
+              participantLimit: 0,
+              registeredCount: 0,
+              featured: false,
+              categories: const [],
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          ),
         ),
       );
     }
