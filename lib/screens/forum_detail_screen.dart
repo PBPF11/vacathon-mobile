@@ -175,35 +175,61 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
   }
 
   Future<void> _toggleLike(ForumPost post) async {
+    final index = _posts.indexWhere((p) => p.id == post.id);
+    if (index == -1) return;
+
+    final oldPost = _posts[index];
+    final newLiked = !oldPost.isLikedByUser;
+    final newCount = newLiked
+        ? oldPost.likesCount + 1
+        : (oldPost.likesCount - 1).clamp(0, 999999);
+
+    // Optimistic Update: Update UI immediately
+    setState(() {
+      final updatedPost = ForumPost(
+        id: oldPost.id,
+        threadId: oldPost.threadId,
+        authorId: oldPost.authorId,
+        authorUsername: oldPost.authorUsername,
+        parentId: oldPost.parentId,
+        content: oldPost.content,
+        createdAt: oldPost.createdAt,
+        updatedAt: oldPost.updatedAt,
+        likesCount: newCount,
+        isLikedByUser: newLiked,
+      );
+      _posts[index] = updatedPost;
+
+      // Update organized posts (which drives the UI)
+      final orgIndex = _organizedPosts.indexWhere(
+        (tp) => tp.post.id == post.id,
+      );
+      if (orgIndex != -1) {
+        _organizedPosts[orgIndex] = ThreadedPost(
+          updatedPost,
+          _organizedPosts[orgIndex].depth,
+        );
+      }
+    });
+
     try {
       await ApiService.instance.likePost(post.id);
-      // Optimistic update
-      setState(() {
-        final index = _posts.indexWhere((p) => p.id == post.id);
-        if (index != -1) {
-          final oldPost = _posts[index];
-          final newLiked = !oldPost.isLikedByUser;
-          final newCount = newLiked
-              ? oldPost.likesCount + 1
-              : oldPost.likesCount - 1;
-
-          _posts[index] = ForumPost(
-            id: oldPost.id,
-            threadId: oldPost.threadId,
-            authorId: oldPost.authorId,
-            authorUsername: oldPost.authorUsername,
-            parentId: oldPost.parentId,
-            content: oldPost.content,
-            createdAt: oldPost.createdAt,
-            updatedAt: oldPost.updatedAt,
-            likesCount: newCount < 0 ? 0 : newCount,
-            isLikedByUser: newLiked,
-          );
-        }
-      });
     } catch (e) {
       print('[ERROR] Failed to like post: $e');
+      // Revert change if API fails
       if (mounted) {
+        setState(() {
+          _posts[index] = oldPost;
+          final orgIndex = _organizedPosts.indexWhere(
+            (tp) => tp.post.id == post.id,
+          );
+          if (orgIndex != -1) {
+            _organizedPosts[orgIndex] = ThreadedPost(
+              oldPost,
+              _organizedPosts[orgIndex].depth,
+            );
+          }
+        });
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Failed to like post')));
@@ -610,11 +636,113 @@ class _ForumDetailScreenState extends State<ForumDetailScreen> {
                   ),
                 ),
               ),
+              const SizedBox(width: 16),
+              // Report Button
+              InkWell(
+                onTap: () => _reportPost(post),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.flag_outlined,
+                        size: 16,
+                        color: textColor.withOpacity(0.6),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Report',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: textColor.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _reportPost(ForumPost post) async {
+    final reasonController = TextEditingController();
+    final shouldReport = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Let us know why this post should be reviewed:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                hintText: 'Reason (e.g. spam, harassment)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldReport == true) {
+      final reason = reasonController.text.trim();
+      if (reason.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please provide a reason.')),
+          );
+        }
+        return;
+      }
+      try {
+        final response = await ApiService.instance.reportPost(post.id, reason);
+        if (mounted) {
+          if (response['success'] == true) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Report submitted. Thank you for keeping the forum safe.',
+                ),
+              ),
+            );
+          } else {
+            final message = response['message'] ?? 'Failed to submit report.';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(message)));
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to submit report: $e')),
+          );
+        }
+      }
+    }
   }
 
   Widget _buildReplyInput() {

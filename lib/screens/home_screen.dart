@@ -29,13 +29,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-  late final List<Widget> _widgetOptions;
-
-  @override
-  void initState() {
-    super.initState();
-    _widgetOptions = <Widget>[
-      MainMenuScreen(onNavigate: _onItemTapped),
+  List<Widget> _buildWidgetOptions(bool isAdmin) {
+    return <Widget>[
+      isAdmin
+          ? const DashboardContent()
+          : MainMenuScreen(onNavigate: _onItemTapped),
       const EventsScreen(),
       const ProfileViewScreen(),
       const ForumScreen(),
@@ -74,9 +72,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAdmin =
+        authProvider.userProfile?.isSuperuser == true ||
+        authProvider.userProfile?.isStaff == true;
+    final widgetOptions = _buildWidgetOptions(isAdmin);
+
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(child: _widgetOptions.elementAt(_selectedIndex)),
+      body: SafeArea(child: widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -156,6 +160,9 @@ class DashboardContent extends StatelessWidget {
             LayoutBuilder(
               builder: (context, constraints) {
                 final isDesktop = constraints.maxWidth > 1024;
+                final isAdmin =
+                    profile != null && (profile.isSuperuser || profile.isStaff);
+
                 return isDesktop
                     ? Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,7 +174,18 @@ class DashboardContent extends StatelessWidget {
                           ),
                           const SizedBox(width: 32),
                           // Main content - matches .dashboard-main
-                          Expanded(child: _buildDashboardMain(profile)),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildDashboardMain(profile),
+                                if (isAdmin) ...[
+                                  const SizedBox(height: 32),
+                                  _buildAdminSection(context),
+                                ],
+                              ],
+                            ),
+                          ),
                         ],
                       )
                     : Column(
@@ -175,6 +193,10 @@ class DashboardContent extends StatelessWidget {
                           _buildProfileCard(context, profile),
                           const SizedBox(height: 32),
                           _buildDashboardMain(profile),
+                          if (isAdmin) ...[
+                            const SizedBox(height: 32),
+                            _buildAdminSection(context),
+                          ],
                         ],
                       );
               },
@@ -224,10 +246,11 @@ class DashboardContent extends StatelessWidget {
                       errorBuilder: (context, error, stackTrace) {
                         return Center(
                           child: Text(
-                            profile?.displayName
-                                    ?.substring(0, 1)
-                                    .toUpperCase() ??
-                                'R',
+                            profile?.displayName?.isNotEmpty == true
+                                ? profile!.displayName![0].toUpperCase()
+                                : profile?.username?.isNotEmpty == true
+                                    ? profile!.username![0].toUpperCase()
+                                    : 'R',
                             style: const TextStyle(
                               fontSize: 40,
                               fontWeight: FontWeight.w700,
@@ -240,8 +263,11 @@ class DashboardContent extends StatelessWidget {
                   )
                 : Center(
                     child: Text(
-                      profile?.displayName?.substring(0, 1).toUpperCase() ??
-                          'R',
+                      profile?.displayName?.isNotEmpty == true
+                          ? profile!.displayName![0].toUpperCase()
+                          : profile?.username?.isNotEmpty == true
+                              ? profile!.username![0].toUpperCase()
+                              : 'R',
                       style: const TextStyle(
                         fontSize: 40, // matches font-size: 2.5rem
                         fontWeight: FontWeight.w700,
@@ -784,6 +810,112 @@ class DashboardContent extends StatelessWidget {
                 .toList(),
           ),
       ],
+    );
+  }
+
+  Widget _buildAdminSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Admin Panel',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: primaryColor,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.count(
+          crossAxisCount: 2,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _buildAdminActionCard(
+              'Manage Events',
+              'Create, edit, and delete events',
+              Icons.event,
+              () => Navigator.pushNamed(context, '/admin/events'),
+            ),
+            _buildAdminActionCard(
+              'Manage Participants',
+              'View and manage registrations',
+              Icons.people,
+              () => Navigator.pushNamed(context, '/admin/participants'),
+            ),
+            _buildAdminActionCard(
+              'Forum Moderation',
+              'Moderate forum posts and reports',
+              Icons.forum,
+              () => Navigator.pushNamed(context, '/admin/forum'),
+            ),
+            _buildAdminActionCard(
+              'View Statistics',
+              'See platform analytics',
+              Icons.analytics,
+              () {
+                // TODO: Show admin stats modal or navigate to stats page
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Statistics feature coming soon'),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminActionCard(
+    String title,
+    String description,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: whiteColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: darkColor.withOpacity(0.1),
+              blurRadius: 26,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 32, color: primaryColor),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              description,
+              style: TextStyle(
+                fontSize: 12,
+                color: textColor.withOpacity(0.6),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

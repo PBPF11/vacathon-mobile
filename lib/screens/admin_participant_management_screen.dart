@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
+import '../models/models.dart';
 import '../services/api_service.dart';
 
 // CSS Variables from reference

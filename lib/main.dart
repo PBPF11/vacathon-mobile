@@ -10,6 +10,10 @@ import 'screens/events_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
 import 'screens/admin_event_management_screen.dart';
 import 'screens/admin_participant_management_screen.dart';
+import 'screens/admin_event_management_screen.dart';
+import 'screens/admin_participant_management_screen.dart';
+import 'screens/admin_forum_moderation_screen.dart';
+import 'screens/profile_screen.dart';
 
 // App Colors
 const Color primaryGreen = Color(0xFFB9F61E);
@@ -115,9 +119,12 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/register': (context) => const RegisterScreen(),
         '/admin': (context) => const AdminDashboardScreen(),
+        // Admin routes - accessible from main dashboard
         '/admin/events': (context) => const AdminEventManagementScreen(),
         '/admin/participants': (context) =>
             const AdminParticipantManagementScreen(),
+        '/admin/forum': (context) => const AdminForumModerationScreen(),
+        '/profile/edit': (context) => const ProfileScreen(),
         // Routes are now handled by bottom navigation in HomeScreen
       },
     );
@@ -132,6 +139,8 @@ class AuthWrapper extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
 
     if (authProvider.isAuthenticated) {
+      // All users (including admins) go to the main dashboard
+      // Admin features are shown within the main dashboard for admin users
       return const HomeScreen();
     } else {
       return const LoginScreen();

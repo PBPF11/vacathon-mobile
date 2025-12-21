@@ -1,6 +1,9 @@
+﻿import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../models/models.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../services/dummy_data_service.dart';
 import 'event_detail_screen.dart';
@@ -21,868 +24,666 @@ class EventsScreen extends StatefulWidget {
 }
 
 class _EventsScreenState extends State<EventsScreen> {
-  EventsResponse? _eventsResponse;
-  int _currentPage = 1;
-  bool _isLoadingMore = false;
-  bool _isLoading = true;
-  String _errorMessage = '';
-  late ApiService _apiService;
-
-  // Filter states
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounce;
+
+  List<Event> _events = [];
+  EventPagination? _pagination;
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
+  String? _errorMessage;
+  int _currentPage = 1;
+
+  String _searchQuery = '';
   String? _selectedStatus;
   String? _selectedCity;
-  int? _selectedCategoryId;
-  String? _selectedSort;
-  bool _showFilters = false;
+  double? _selectedDistance;
 
-  // Available filter options
   List<String> _availableCities = [];
-  List<EventCategory> _availableCategories = [];
-  final List<String> _statusOptions = ['upcoming', 'ongoing', 'completed'];
-  final List<String> _sortOptions = ['popularity', 'soonest', 'latest'];
+  List<double> _availableDistances = [];
+
+  late ApiService _apiService;
+
+  static const List<String> _statusOptions = [
+    'upcoming',
+    'ongoing',
+    'completed',
+    'cancelled',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _bootstrap();
-  }
-
-  Future<void> _bootstrap() async {
     _apiService = ApiService.instance;
-    await _loadEvents();
+    _loadEvents(reset: true);
   }
 
-  Future<void> _loadEvents({bool reset = true}) async {
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _isAdminUser() {
+    final profile = Provider.of<AuthProvider>(context, listen: false).userProfile;
+    return profile?.isSuperuser == true || profile?.isStaff == true;
+  }
+
+  Map<String, String> _buildFilters() {
+    final filters = <String, String>{};
+    if (_searchQuery.trim().isNotEmpty) {
+      filters['search'] = _searchQuery.trim();
+      filters['q'] = _searchQuery.trim();
+    }
+    if (_selectedStatus != null && _selectedStatus!.isNotEmpty) {
+      filters['status'] = _selectedStatus!;
+    }
+    if (_selectedCity != null && _selectedCity!.isNotEmpty) {
+      filters['city'] = _selectedCity!;
+    }
+    if (_selectedDistance != null) {
+      filters['distance'] = _selectedDistance!.toString();
+    }
+    return filters;
+  }
+
+  Future<EventsResponse> _fetchEvents({required int page}) async {
+    final filters = _buildFilters();
+    final isAdmin = _isAdminUser();
+
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return isAdmin
+          ? DummyDataService.getAdminEvents(page: page, filters: filters)
+          : DummyDataService.getEvents(page: page, filters: filters);
+    }
+
+    if (isAdmin) {
+      try {
+        return await _apiService.getAdminEvents(page: page, filters: filters);
+      } catch (e) {
+        print('[WARN] Admin events failed, fallback to user events: $e');
+        return await _apiService.getEvents(page: page, filters: filters);
+      }
+    }
+
+    return await _apiService.getEvents(page: page, filters: filters);
+  }
+
+  Future<void> _loadEvents({required bool reset}) async {
+    if (!mounted) return;
+
     if (reset) {
-      _currentPage = 1;
       setState(() {
         _isLoading = true;
-        _errorMessage = '';
+        _errorMessage = null;
       });
     } else {
+      if (_isLoadingMore || _pagination?.hasNext != true) {
+        return;
+      }
       setState(() {
         _isLoadingMore = true;
+        _errorMessage = null;
       });
     }
 
-    print('[DEBUG] Loading events...');
+    final targetPage = reset ? 1 : _currentPage + 1;
+
     try {
-      final filters = <String, String>{};
-      if (_searchController.text.isNotEmpty) {
-        filters['q'] = _searchController.text;
-      }
-      if (_selectedStatus != null) {
-        filters['status'] = _selectedStatus!;
-      }
-      if (_selectedCity != null) {
-        filters['city'] = _selectedCity!;
-      }
-      if (_selectedCategoryId != null) {
-        filters['category'] = _selectedCategoryId!.toString();
-      }
-      if (_selectedSort != null && _selectedSort!.isNotEmpty) {
-        filters['sort_by'] = _selectedSort!;
-      }
+      final response = await _fetchEvents(page: targetPage);
+      final updatedEvents = reset
+          ? response.events
+          : [..._events, ...response.events];
+      final updatedCities = _deriveCities(updatedEvents);
+      final updatedDistances = _deriveDistances(updatedEvents);
 
-      print('[DEBUG] Filters: $filters');
-      final response = DummyDataService.USE_DUMMY_DATA
-          ? await DummyDataService.getEvents(
-              page: _currentPage,
-              filters: filters,
-            )
-          : await _apiService.getEvents(
-              page: _currentPage,
-              filters: filters,
-            );
-
-      if (_eventsResponse == null || reset) {
-        _eventsResponse = response;
-      } else {
-        _eventsResponse = EventsResponse(
-          events: [..._eventsResponse!.events, ...response.events],
-          pagination: response.pagination,
-        );
-      }
-
-      _deriveFilterOptions();
-      print('[DEBUG] Events loaded successfully');
+      if (!mounted) return;
+      setState(() {
+        _currentPage = targetPage;
+        _events = updatedEvents;
+        _pagination = response.pagination;
+        if (updatedEvents.isNotEmpty) {
+          _availableCities = updatedCities;
+          _availableDistances = updatedDistances;
+        }
+      });
     } catch (e) {
-      _errorMessage = 'Failed to load events: $e';
-      print('[DEBUG] Error loading events: $e');
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Failed to load events: $e';
+      });
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _isLoadingMore = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _isLoadingMore = false;
+      });
     }
   }
 
-  void _resetFilters() {
-    setState(() {
-      _searchController.clear();
-      _selectedStatus = null;
-      _selectedCity = null;
-      _selectedCategoryId = null;
-      _selectedSort = null;
-    });
-    _loadEvents();
+  List<String> _deriveCities(List<Event> events) {
+    final cities = events
+        .map((event) => event.city.trim())
+        .where((city) => city.isNotEmpty)
+        .toSet()
+        .toList();
+    cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return cities;
   }
 
-  void _deriveFilterOptions() {
-    final events = _eventsResponse?.events ?? [];
-    _availableCities =
-        events.map((event) => event.city).where((city) => city.isNotEmpty).toSet().toList()
-          ..sort();
-
-    final categoryMap = <int, EventCategory>{};
+  List<double> _deriveDistances(List<Event> events) {
+    final distances = <double>{};
     for (final event in events) {
       for (final category in event.categories) {
-        categoryMap.putIfAbsent(category.id, () => category);
+        distances.add(category.distanceKm);
       }
     }
-    _availableCategories = categoryMap.values.toList()
-      ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    final list = distances.toList()..sort();
+    return list;
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      setState(() {
+        _searchQuery = value;
+      });
+      _loadEvents(reset: true);
+    });
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+      _selectedStatus = null;
+      _selectedCity = null;
+      _selectedDistance = null;
+    });
+    _loadEvents(reset: true);
+  }
+
+  List<String> _getCityOptions() {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      final cities = DummyDataService.getUniqueCities();
+      cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+      return cities;
+    }
+    return _availableCities;
+  }
+
+  List<double> _getDistanceOptions() {
+    if (DummyDataService.USE_DUMMY_DATA) {
+      return DummyDataService.getUniqueDistances();
+    }
+    return _availableDistances;
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isAdmin =
+        authProvider.userProfile?.isSuperuser == true ||
+        authProvider.userProfile?.isStaff == true;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Daftar Marathon'),
+        title: const Text('Events'),
         backgroundColor: primaryColor,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: Icon(_showFilters ? Icons.filter_list_off : Icons.filter_list),
-            onPressed: () {
-              setState(() {
-                _showFilters = !_showFilters;
-              });
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
-          // Search bar - matches .layout-section.layout-section--compact
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: whiteColor,
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search events...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    _loadEvents();
-                  },
-                )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: darkColor.withOpacity(0.2)),
-                ),
-                filled: true,
-                fillColor: bgColor,
-              ),
-              onSubmitted: (_) => _loadEvents(),
-            ),
-          ),
-
-          // Filters - expandable section
-          if (_showFilters) _buildFilters(),
-
-          // Events list
+          _buildFilterBar(),
+          if (_errorMessage != null) _buildErrorBanner(),
           Expanded(
-            child: _buildEventsList(),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildEventsList(isAdmin),
           ),
         ],
       ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => Navigator.pushNamed(context, '/admin/events'),
+              backgroundColor: primaryColor,
+              icon: const Icon(Icons.admin_panel_settings),
+              label: const Text('Manage'),
+            )
+          : null,
     );
   }
 
-  void _addNewEvent() {
-    _showEventDialog();
-  }
+  Widget _buildFilterBar() {
+    final cities = _getCityOptions();
+    final distances = _getDistanceOptions();
+    final selectedStatus =
+        _statusOptions.contains(_selectedStatus) ? _selectedStatus : null;
+    final selectedCity =
+        cities.contains(_selectedCity) ? _selectedCity : null;
+    final selectedDistance =
+        distances.contains(_selectedDistance) ? _selectedDistance : null;
 
-  void _editEvent(Event event) {
-    _showEventDialog(event: event);
-  }
-
-  void _showEventDialog({Event? event}) {
-    final isEditing = event != null;
-
-    // Form controllers
-    final titleController = TextEditingController(text: event?.title ?? '');
-    final descriptionController = TextEditingController(text: event?.description ?? '');
-    final cityController = TextEditingController(text: event?.city ?? '');
-    final popularityController = TextEditingController(text: event?.popularityScore.toString() ?? '0');
-
-    // Date variables
-    DateTime? startDate = event?.startDate ?? DateTime.now();
-    DateTime? endDate = event?.endDate ?? DateTime.now().add(const Duration(days: 1));
-    DateTime? registrationDeadline = event?.registrationDeadline ?? DateTime.now().add(const Duration(days: 30));
-    String status = event?.status ?? 'upcoming';
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text(isEditing ? 'Edit Event' : 'Add New Event'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        border: OutlineInputBorder(),
-                      ),
+    return Container(
+      color: whiteColor,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            onSubmitted: (value) {
+              _debounce?.cancel();
+              setState(() {
+                _searchQuery = value;
+              });
+              _loadEvents(reset: true);
+            },
+            decoration: InputDecoration(
+              hintText: 'Search events...',
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: primaryColor, width: 2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              SizedBox(
+                width: 170,
+                child: DropdownButtonFormField<String?>(
+                  value: selectedStatus,
+                  decoration: InputDecoration(
+                    labelText: 'Status',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: cityController,
-                      decoration: const InputDecoration(
-                        labelText: 'City',
-                        border: OutlineInputBorder(),
-                      ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('All statuses'),
                     ),
-                    const SizedBox(height: 12),
-                    // Start Date
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: startDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() => startDate = picked);
-                        }
-                      },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Start Date',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Text(
-                          startDate != null ? DateFormat('yyyy-MM-dd').format(startDate!) : 'Select date',
-                        ),
+                    ..._statusOptions.map(
+                      (status) => DropdownMenuItem<String?>(
+                        value: status,
+                        child: Text(_statusLabel(status)),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    // End Date
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: endDate ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() => endDate = picked);
-                        }
-                      },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'End Date',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Text(
-                          endDate != null ? DateFormat('yyyy-MM-dd').format(endDate!) : 'Select date',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Registration Deadline
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: registrationDeadline ?? DateTime.now(),
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          setState(() => registrationDeadline = picked);
-                        }
-                      },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Registration Deadline',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Text(
-                          registrationDeadline != null ? DateFormat('yyyy-MM-dd').format(registrationDeadline!) : 'Select date',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Status
-                    DropdownButtonFormField<String>(
-                      value: status,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ['upcoming', 'ongoing', 'completed'].map((s) {
-                        return DropdownMenuItem(
-                          value: s,
-                          child: Text(s.toUpperCase()),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => status = value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: popularityController,
-                      decoration: const InputDecoration(
-                        labelText: 'Popularity Score',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.number,
                     ),
                   ],
-                ),
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () async {
-                    // Validate and save
-                    if (titleController.text.isEmpty ||
-                        descriptionController.text.isEmpty ||
-                        cityController.text.isEmpty ||
-                        startDate == null ||
-                        endDate == null ||
-                        registrationDeadline == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please fill all required fields')),
-                      );
-                      return;
-                    }
-
-                    final popularityScore = int.tryParse(popularityController.text) ?? 0;
-
-                    final eventData = {
-                      'title': titleController.text,
-                      'description': descriptionController.text,
-                      'city': cityController.text,
-                      'country': 'Indonesia', // Default
-                      'start_date': startDate!.toIso8601String(),
-                      'end_date': endDate!.toIso8601String(),
-                      'registration_open_date': startDate!.subtract(const Duration(days: 30)).toIso8601String(),
-                      'registration_deadline': registrationDeadline!.toIso8601String(),
-                      'status': status,
-                      'popularity_score': popularityScore,
-                      'participant_limit': 1000, // Default
-                      'featured': false, // Default
-                    };
-
-                    Navigator.of(context).pop();
-
-                    try {
-                      if (isEditing) {
-                        if (DummyDataService.USE_DUMMY_DATA) {
-                          await DummyDataService.updateEvent(event!.id, eventData);
-                        } else {
-                          await _apiService.updateEvent(event!.id, eventData);
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Event updated successfully')),
-                        );
-                      } else {
-                        if (DummyDataService.USE_DUMMY_DATA) {
-                          await DummyDataService.createEvent(eventData);
-                        } else {
-                          await _apiService.createEvent(eventData);
-                        }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Event created successfully')),
-                        );
-                      }
-                      _loadEvents(); // Refresh list
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save event: $e')),
-                      );
-                    }
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedStatus = value;
+                    });
+                    _loadEvents(reset: true);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                  ),
-                  child: const Text('Save'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancel'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _deleteEvent(Event event) {
-    // Show confirmation dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Event'),
-          content: Text('Are you sure you want to delete "${event.title}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                try {
-                  if (DummyDataService.USE_DUMMY_DATA) {
-                    await DummyDataService.deleteEvent(event.id);
-                  } else {
-                    await _apiService.deleteEvent(event.id);
-                  }
-                  _loadEvents(); // Refresh list
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Event deleted successfully')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to delete event: $e')),
-                  );
-                }
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildFilters() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: whiteColor,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Filters',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: primaryColor,
                 ),
               ),
-              TextButton(
-                onPressed: _resetFilters,
-                child: const Text(
-                  'Reset',
-                  style: TextStyle(color: primaryColor),
+              SizedBox(
+                width: 170,
+                child: DropdownButtonFormField<String?>(
+                  value: selectedCity,
+                  decoration: InputDecoration(
+                    labelText: 'City',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('All cities'),
+                    ),
+                    ...cities.map(
+                      (city) => DropdownMenuItem<String?>(
+                        value: city,
+                        child: Text(city),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCity = value;
+                    });
+                    _loadEvents(reset: true);
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 170,
+                child: DropdownButtonFormField<double?>(
+                  value: selectedDistance,
+                  decoration: InputDecoration(
+                    labelText: 'Distance',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem<double?>(
+                      value: null,
+                      child: Text('All distances'),
+                    ),
+                    ...distances.map(
+                      (distance) => DropdownMenuItem<double?>(
+                        value: distance,
+                        child: Text('${distance.toStringAsFixed(1)} km'),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDistance = value;
+                    });
+                    _loadEvents(reset: true);
+                  },
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.clear),
+                label: const Text('Clear'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: textColor,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-
-          // Status filter
-          DropdownButtonFormField<String>(
-            value: _selectedStatus,
-            decoration: const InputDecoration(
-              labelText: 'Status',
-              border: OutlineInputBorder(),
-            ),
-            items: _statusOptions.map((status) {
-              return DropdownMenuItem(
-                value: status,
-                child: Text(status.toUpperCase()),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedStatus = value;
-              });
-              _loadEvents();
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // City filter
-          DropdownButtonFormField<String>(
-            value: _selectedCity,
-            decoration: const InputDecoration(
-              labelText: 'City',
-              border: OutlineInputBorder(),
-            ),
-            items: _availableCities.map((city) {
-              return DropdownMenuItem(
-                value: city,
-                child: Text(city),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCity = value;
-              });
-              _loadEvents();
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // Distance filter
-          DropdownButtonFormField<int>(
-            value: _selectedCategoryId,
-            decoration: const InputDecoration(
-              labelText: 'Distance',
-              border: OutlineInputBorder(),
-            ),
-            items: _availableCategories.map((category) {
-              return DropdownMenuItem(
-                value: category.id,
-                child: Text(category.displayName),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedCategoryId = value;
-              });
-              _loadEvents();
-            },
-          ),
-
-          const SizedBox(height: 12),
-
-          // Sort filter
-          DropdownButtonFormField<String>(
-            value: _selectedSort,
-            decoration: const InputDecoration(
-              labelText: 'Sort By',
-              border: OutlineInputBorder(),
-            ),
-            items: _sortOptions.map((sort) {
-              final label = switch (sort) {
-                'popularity' => 'Most popular',
-                'soonest' => 'Upcoming soonest',
-                'latest' => 'Latest start date',
-                _ => sort,
-              };
-              return DropdownMenuItem(
-                value: sort,
-                child: Text(label),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedSort = value;
-              });
-              _loadEvents();
-            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEventsList() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-        ),
-      );
-    }
-
-    if (_errorMessage.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.red,
+  Widget _buildErrorBanner() {
+    return Container(
+      width: double.infinity,
+      color: Colors.red.withOpacity(0.08),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.redAccent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _errorMessage ?? 'Failed to load events.',
+              style: const TextStyle(color: Colors.redAccent),
             ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadEvents,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_eventsResponse == null || _eventsResponse!.events.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.event_busy,
-              size: 64,
-              color: Colors.grey,
-            ),
-            SizedBox(height: 16),
-            Text(
-              'No events found',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _eventsResponse!.events.length + (_eventsResponse!.pagination.hasNext ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _eventsResponse!.events.length) {
-          // Load more button
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Center(
-              child: ElevatedButton(
-                onPressed: _isLoadingMore
-                    ? null
-                    : () {
-                        _currentPage += 1;
-                        _loadEvents(reset: false);
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                ),
-                child: _isLoadingMore
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text('Load More'),
-              ),
-            ),
-          );
-        }
-
-        final event = _eventsResponse!.events[index];
-        return _buildEventCard(event);
-      },
+          ),
+          TextButton(
+            onPressed: () => _loadEvents(reset: true),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildEventCard(Event event) {
+  Widget _buildEventsList(bool isAdmin) {
+    if (_events.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => _loadEvents(reset: true),
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _events.length + (_pagination?.hasNext == true ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index >= _events.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: _isLoadingMore
+                    ? const CircularProgressIndicator()
+                    : TextButton.icon(
+                        onPressed: () => _loadEvents(reset: false),
+                        icon: const Icon(Icons.more_horiz),
+                        label: const Text('Load more'),
+                      ),
+              ),
+            );
+          }
+
+          final event = _events[index];
+          return _buildEventCard(event, isAdmin: isAdmin);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.event_busy, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No events found',
+            style: TextStyle(fontSize: 18, color: textColor.withOpacity(0.7)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try adjusting your filters or refresh.',
+            style: TextStyle(fontSize: 14, color: textColor.withOpacity(0.5)),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () => _loadEvents(reset: true),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Refresh'),
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventCard(Event event, {required bool isAdmin}) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
       child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => EventDetailScreen(event: event),
-            ),
-          );
-        },
+        onTap: () => _openEventDetail(event),
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Event image
-              if (event.bannerImage != null)
-                Container(
-                  height: 150,
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    image: DecorationImage(
-                      image: NetworkImage(event.bannerImage!),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (event.bannerImage != null)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
                 ),
-
-              // Title and status
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      event.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: primaryColor,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(event.status).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      event.status.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: _getStatusColor(event.status),
-                      ),
-                    ),
-                  ),
-                ],
+                child: Image.network(
+                  event.bannerImage!,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               ),
-
-              const SizedBox(height: 8),
-
-              // Location and date
-              Row(
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${event.city}, ${event.country}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 4),
-
-              Row(
-                children: [
-                  const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text(
-                    event.formattedDateRange,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Categories
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: event.categories.take(3).map((category) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      category.displayName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: darkColor,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              const SizedBox(height: 12),
-
-              // CTA row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${event.registeredCount}/${event.participantLimit} registered',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => EventDetailScreen(event: event),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          event.title,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: primaryColor,
+                          ),
                         ),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _statusColor(event.status),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _statusLabel(event.status).toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    event.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: textColor.withOpacity(0.7),
                     ),
-                    child: const Text('View details'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${event.city}, ${event.country}',
+                          style: TextStyle(
+                            color: textColor.withOpacity(0.6),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(
+                        event.formattedDateRange,
+                        style: TextStyle(
+                          color: textColor.withOpacity(0.6),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  if (event.categories.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: event.categories
+                          .map(
+                            (category) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accentColor.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                category.displayName,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: darkColor,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        "${event.registeredCount}/${event.participantLimit == 0 ? 'Unlimited' : event.participantLimit} registered",
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: textColor.withOpacity(0.6),
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () => _openEventDetail(event),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(isAdmin ? 'View event' : 'View details'),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Color _getStatusColor(String status) {
+  void _openEventDetail(Event event) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => EventDetailScreen(event: event)),
+    );
+  }
+
+  Color _statusColor(String status) {
     switch (status) {
       case 'upcoming':
         return Colors.blue;
@@ -890,15 +691,25 @@ class _EventsScreenState extends State<EventsScreen> {
         return Colors.green;
       case 'completed':
         return Colors.grey;
+      case 'cancelled':
+        return Colors.red;
       default:
         return Colors.grey;
     }
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'upcoming':
+        return 'Upcoming';
+      case 'ongoing':
+        return 'Ongoing';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
   }
-
 }

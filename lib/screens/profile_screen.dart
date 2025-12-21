@@ -32,17 +32,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _websiteController = TextEditingController();
   final _instagramController = TextEditingController();
   final _stravaController = TextEditingController();
+  final _avatarUrlController = TextEditingController();
 
   String? _selectedFavoriteDistance;
   DateTime? _selectedBirthDate;
 
-  final List<String> _distanceOptions = [
-    '5K',
-    '10K',
-    '21K',
-    '42K',
-    'ULTRA'
-  ];
+  final List<String> _distanceOptions = ['5K', '10K', '21K', '42K', 'ULTRA'];
 
   @override
   void initState() {
@@ -67,15 +62,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _cityController.text = _profile.city ?? '';
     _countryController.text = _profile.country ?? '';
     _emergencyContactNameController.text = _profile.emergencyContactName ?? '';
-    _emergencyContactPhoneController.text = _profile.emergencyContactPhone ?? '';
+    _emergencyContactPhoneController.text =
+        _profile.emergencyContactPhone ?? '';
     _websiteController.text = _profile.website ?? '';
     _instagramController.text = _profile.instagramHandle ?? '';
     _stravaController.text = _profile.stravaProfile ?? '';
+    _avatarUrlController.text = _profile.avatarUrl ?? '';
     _selectedFavoriteDistance =
-    _distanceOptions.contains(_profile.favoriteDistance)
+        _distanceOptions.contains(_profile.favoriteDistance)
         ? _profile.favoriteDistance
         : null;
     _selectedBirthDate = _profile.birthDate;
+  }
+
+  Future<void> _pickImageUrl() async {
+    final controller = TextEditingController(text: _avatarUrlController.text);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Enter Image URL'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'https://example.com/image.jpg',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _avatarUrlController.text = result;
+      });
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -90,22 +122,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         id: _profile.id,
         username: _profile.username,
         displayName: _displayNameController.text.trim(),
-        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
-        city: _cityController.text.trim().isEmpty ? null : _cityController.text.trim(),
-        country: _countryController.text.trim().isEmpty ? null : _countryController.text.trim(),
-        avatarUrl: _profile.avatarUrl,
+        bio: _bioController.text.trim().isEmpty
+            ? null
+            : _bioController.text.trim(),
+        city: _cityController.text.trim().isEmpty
+            ? null
+            : _cityController.text.trim(),
+        country: _countryController.text.trim().isEmpty
+            ? null
+            : _countryController.text.trim(),
+        avatarUrl: _avatarUrlController.text.trim().isEmpty
+            ? null
+            : _avatarUrlController.text.trim(),
         favoriteDistance: _selectedFavoriteDistance,
-        emergencyContactName: _emergencyContactNameController.text.trim().isEmpty
+        emergencyContactName:
+            _emergencyContactNameController.text.trim().isEmpty
             ? null
             : _emergencyContactNameController.text.trim(),
-        emergencyContactPhone: _emergencyContactPhoneController.text.trim().isEmpty
+        emergencyContactPhone:
+            _emergencyContactPhoneController.text.trim().isEmpty
             ? null
             : _emergencyContactPhoneController.text.trim(),
-        website: _websiteController.text.trim().isEmpty ? null : _websiteController.text.trim(),
-        instagramHandle:
-        _instagramController.text.trim().isEmpty ? null : _instagramController.text.trim(),
-        stravaProfile:
-        _stravaController.text.trim().isEmpty ? null : _stravaController.text.trim(),
+        website: _websiteController.text.trim().isEmpty
+            ? null
+            : _websiteController.text.trim(),
+        instagramHandle: _instagramController.text.trim().isEmpty
+            ? null
+            : _instagramController.text.trim(),
+        stravaProfile: _stravaController.text.trim().isEmpty
+            ? null
+            : _stravaController.text.trim(),
         birthDate: _selectedBirthDate,
         createdAt: _profile.createdAt,
         updatedAt: DateTime.now(),
@@ -119,6 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'bio': updatedProfile.bio,
         'city': updatedProfile.city,
         'country': updatedProfile.country,
+        'avatar_url': updatedProfile.avatarUrl,
         'favorite_distance': updatedProfile.favoriteDistance,
         'emergency_contact_name': updatedProfile.emergencyContactName,
         'emergency_contact_phone': updatedProfile.emergencyContactPhone,
@@ -132,13 +179,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update profile: $e')),
-        );
+        Navigator.of(context).pop(true);
       }
     } finally {
       if (mounted) {
@@ -156,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
-    if (picked != null && picked != _selectedBirthDate) {
+    if (picked != null) {
       setState(() {
         _selectedBirthDate = picked;
       });
@@ -171,9 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title: const Text('Edit Profile'),
           backgroundColor: primaryColor,
         ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -183,24 +222,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Edit Profile'),
         backgroundColor: primaryColor,
         elevation: 0,
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _saveProfile,
-            child: _isLoading
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-                : const Text(
-              'Save',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -221,32 +242,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           shape: BoxShape.circle,
                           color: primaryColor.withOpacity(0.15),
                         ),
-                        child: _profile.avatarUrl != null
+                        child: _avatarUrlController.text.isNotEmpty
                             ? ClipOval(
-                          child: Image.network(
-                            _profile.avatarUrl!,
-                            width: 120,
-                            height: 120,
-                            fit: BoxFit.cover,
-                          ),
-                        )
+                                child: Image.network(
+                                  _avatarUrlController.text,
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) {
+                                    return const Icon(Icons.person, size: 40);
+                                  },
+                                ),
+                              )
                             : Center(
-                          child: Text(
-                            _profile.displayName.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.w700,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ),
+                                child: Text(
+                                  _profile.displayName.isNotEmpty
+                                      ? _profile.displayName[0].toUpperCase()
+                                      : _profile.username.isNotEmpty
+                                      ? _profile.username[0].toUpperCase()
+                                      : '?',
+                                  style: const TextStyle(
+                                    fontSize: 40,
+                                    fontWeight: FontWeight.w700,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Image picker coming soon')),
-                          );
-                        },
+                        onPressed: _pickImageUrl,
                         child: const Text(
                           'Change Photo',
                           style: TextStyle(color: primaryColor),
@@ -255,12 +279,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
                 _buildSectionTitle('Basic Information'),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _displayNameController,
                   decoration: const InputDecoration(
@@ -274,21 +295,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     return null;
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _bioController,
                   decoration: const InputDecoration(
                     labelText: 'Bio',
                     border: OutlineInputBorder(),
-                    hintText: 'Tell others about your running journey...',
                   ),
                   maxLines: 3,
                 ),
-
                 const SizedBox(height: 16),
-
                 Row(
                   children: [
                     Expanded(
@@ -312,9 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 16),
-
                 DropdownButtonFormField<String>(
                   value: _selectedFavoriteDistance,
                   decoration: const InputDecoration(
@@ -333,9 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     });
                   },
                 ),
-
                 const SizedBox(height: 16),
-
                 InkWell(
                   onTap: _selectBirthDate,
                   child: InputDecorator(
@@ -356,12 +368,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
                 _buildSectionTitle('Emergency Contact'),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _emergencyContactNameController,
                   decoration: const InputDecoration(
@@ -369,9 +378,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _emergencyContactPhoneController,
                   decoration: const InputDecoration(
@@ -379,44 +386,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: OutlineInputBorder(),
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
                 _buildSectionTitle('Social Links'),
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _websiteController,
                   decoration: const InputDecoration(
                     labelText: 'Website',
                     border: OutlineInputBorder(),
-                    hintText: 'https://yourwebsite.com',
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _instagramController,
                   decoration: const InputDecoration(
                     labelText: 'Instagram Handle',
                     border: OutlineInputBorder(),
-                    hintText: '@yourhandle',
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
                 TextFormField(
                   controller: _stravaController,
                   decoration: const InputDecoration(
                     labelText: 'Strava Profile',
                     border: OutlineInputBorder(),
-                    hintText: 'https://strava.com/athletes/yourid',
                   ),
                 ),
-
                 const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentColor,
+                      foregroundColor: Colors.black,
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    onPressed: _isLoading ? null : _saveProfile,
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Save',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -447,6 +468,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _websiteController.dispose();
     _instagramController.dispose();
     _stravaController.dispose();
+    _avatarUrlController.dispose();
     super.dispose();
   }
 }

@@ -2,7 +2,6 @@ import json
 from django.template.loader import render_to_string
 from django.http import HttpResponseRedirect, JsonResponse
 from forum.models import ForumThread, ForumPost, PostReport
-
 from .forms import (
     EventForm,
     ProfileForm,

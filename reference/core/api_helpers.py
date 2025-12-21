@@ -17,6 +17,20 @@ def _absolute_url(request, value: str | None) -> str | None:
 
 
 def serialize_category(category: EventCategory) -> dict[str, Any]:
+from typing import Optional
+
+from django.utils import timezone
+
+from events.models import Event, EventCategory
+from event_detail.models import EventSchedule, AidStation, RouteSegment, EventDocument
+from forum.models import ForumPost, ForumThread
+from notifications.models import Notification as NotificationModel
+from profiles.models import RunnerAchievement, UserProfile, UserRaceHistory
+from registrations.models import EventRegistration
+
+
+def serialize_category(category: EventCategory) -> dict:
+    """Serialize an EventCategory with fields expected by the Flutter models."""
     return {
         "id": category.id,
         "name": category.name,

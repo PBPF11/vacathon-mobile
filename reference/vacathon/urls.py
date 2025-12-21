@@ -34,6 +34,14 @@ urlpatterns = [
     path('admin/events/api/', include('events.admin_api_urls')),
     path('admin/participants/api/', include('registrations.admin_api_urls')),
     path('admin/', admin.site.urls),
+    # API endpoints
+    path('api/', include('core.api_urls')),
+    path('api/events/', include('events.api_urls')),
+    path('api/forum/', include('forum.api_urls')),
+    path('api/profile/', include('profiles.api_urls')),
+    path('api/register/', include('registrations.api_urls')),  # legacy prefix
+    path('api/registrations/', include('registrations.api_urls')),  # mobile-friendly prefix
+    path('api/notifications/', include('notifications.api_urls')),
     # ======================================================
 ]
 

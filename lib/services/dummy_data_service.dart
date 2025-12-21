@@ -278,7 +278,7 @@ class DummyDataService {
     ),
     ForumThread(
       id: 2,
-      eventId: 1,
+      eventId: 1, // Also Jakarta Marathon
       eventTitle: 'Jakarta Marathon 2024',
       authorId: '2',
       authorUsername: 'runningfan',
@@ -588,13 +588,13 @@ class DummyDataService {
       '[DUMMY] getThreads called with eventId: $eventId, query: $query, sort: $sort, page: $page',
     );
 
-    var eventThreads = eventId != null
+    var filteredThreads = eventId != null
         ? _dummyThreads.where((t) => t.eventId == eventId).toList()
-        : _dummyThreads;
+        : List<ForumThread>.from(_dummyThreads);
 
     if (query != null && query.isNotEmpty) {
       final lowerQuery = query.toLowerCase();
-      eventThreads = eventThreads
+      filteredThreads = filteredThreads
           .where(
             (t) =>
                 t.title.toLowerCase().contains(lowerQuery) ||
@@ -606,26 +606,29 @@ class DummyDataService {
     // Sort logic (Matching backend: recent, latest, popular)
     if (sort == 'popular') {
       // Backend 'popular' is by Post Count (replies)
-      eventThreads.sort((a, b) => b.postCount.compareTo(a.postCount));
+      filteredThreads.sort((a, b) => b.postCount.compareTo(a.postCount));
     } else if (sort == 'latest') {
       // Backend 'latest' is by Creation Time
-      eventThreads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      filteredThreads.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    } else if (sort == 'oldest') {
+      filteredThreads.sort((a, b) => a.createdAt.compareTo(b.createdAt));
     } else {
       // Default 'recent' is by Last Activity
-      eventThreads.sort((a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
+      filteredThreads
+          .sort((a, b) => b.lastActivityAt.compareTo(a.lastActivityAt));
     }
 
     final startIndex = (page - 1) * pageSize;
     final endIndex = startIndex + pageSize;
-    final paginatedThreads = eventThreads.sublist(
+    final paginatedThreads = filteredThreads.sublist(
       startIndex,
-      endIndex > eventThreads.length ? eventThreads.length : endIndex,
+      endIndex > filteredThreads.length ? filteredThreads.length : endIndex,
     );
 
     return ThreadsResponse(
       threads: paginatedThreads,
-      total: eventThreads.length,
-      hasNext: endIndex < eventThreads.length,
+      total: filteredThreads.length,
+      hasNext: endIndex < filteredThreads.length,
     );
   }
 

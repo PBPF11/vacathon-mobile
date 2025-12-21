@@ -173,11 +173,11 @@ def event_detail_json(request, slug):
         ],
         "documents": [
             {
-                "id": doc.id,             
-                "event": event.id,      
                 "title": doc.title,
                 "url": doc.document_url,
                 "type": doc.document_type,
+                "id": doc.id,
+                "event": event.id,
                 "uploaded_by": doc.uploaded_by,
                 "uploaded_at": doc.uploaded_at.isoformat(),
             }

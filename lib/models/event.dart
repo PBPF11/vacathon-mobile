@@ -1,6 +1,5 @@
-import 'package:intl/intl.dart';
+﻿import 'dart:math';
 
-/// Represents an event category (e.g., 5K, 21K).
 class EventCategory {
   final int id;
   final String name;
@@ -16,10 +15,10 @@ class EventCategory {
 
   factory EventCategory.fromJson(Map<String, dynamic> json) {
     return EventCategory(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? json['display_name'] ?? '',
-      distanceKm: (json['distance_km'] as num?)?.toDouble() ?? 0,
-      displayName: json['display_name'] ?? json['name'] ?? '',
+      id: _parseInt(json['id']),
+      name: json['name']?.toString() ?? '',
+      distanceKm: _parseDouble(json['distance_km']),
+      displayName: json['display_name']?.toString() ?? json['name']?.toString() ?? '',
     );
   }
 
@@ -31,9 +30,22 @@ class EventCategory {
       'display_name': displayName,
     };
   }
+
+  static int _parseInt(dynamic value, {int fallback = 0}) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static double _parseDouble(dynamic value, {double fallback = 0}) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value?.toString() ?? '') ?? fallback;
+  }
 }
 
-/// Represents a marathon event.
 class Event {
   final int id;
   final String title;
@@ -79,57 +91,42 @@ class Event {
     required this.updatedAt,
   });
 
-  static DateTime _parseDate(String? dateStr) {
-    if (dateStr == null) return DateTime.now();
-
-    // Fix 2-digit years in string format (0026 -> 2026)
-    if (dateStr.startsWith('00')) {
-      dateStr = '20' + dateStr.substring(2);
-    }
-
-    try {
-      final dt = DateTime.parse(dateStr);
-      return dt;
-    } catch (e) {
-      return DateTime.now();
-    }
-  }
-
   factory Event.fromJson(Map<String, dynamic> json) {
+    final categories = <EventCategory>[];
+    final rawCategories = json['categories'];
+    if (rawCategories is List) {
+      for (final item in rawCategories) {
+        if (item is Map<String, dynamic>) {
+          categories.add(EventCategory.fromJson(item));
+        }
+      }
+    }
+
     return Event(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? "",
-      slug: json['slug'] ?? "",
-      description: json['description'] ?? "",
-      city: json['city'] ?? "",
-      country: json['country'] ?? "",
-      venue: json['venue'],
-      startDate: json['start_date'] != null 
-          ? DateTime.parse(json['start_date']) 
-          : DateTime.now(),
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
-      registrationOpenDate: json['registration_open_date'] != null 
-          ? DateTime.parse(json['registration_open_date']) 
-          : null,
-      registrationDeadline: json['registration_deadline'] != null 
-          ? DateTime.parse(json['registration_deadline']) 
-          : DateTime.now(),
-      status: json['status'] ?? "",
-      popularityScore: json['popularity_score'] ?? 0,
-      participantLimit: json['participant_limit'] == 0 ? 100 : (json['participant_limit'] ?? 100),
-      registeredCount: json['registered_count'] ?? 0,
-      featured: json['featured'] ?? false,
-      bannerImage: json['banner_image'],
-      // Handle list categories biar gak null error
-      categories: (json['categories'] as List? ?? [])
-          .map((i) => EventCategory.fromJson(i))
-          .toList(),
-      createdAt: json['created_at'] != null 
-          ? DateTime.parse(json['created_at']) 
-          : DateTime.now(),
-      updatedAt: json['updated_at'] != null 
-          ? DateTime.parse(json['updated_at']) 
-          : DateTime.now(),
+      id: _parseInt(json['id']),
+      title: json['title']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      city: json['city']?.toString() ?? '',
+      country: json['country']?.toString() ?? '',
+      venue: _parseOptionalString(json['venue']),
+      startDate: _parseDate(json['start_date'] ?? json['startDate']),
+      endDate: _parseDateOrNull(json['end_date'] ?? json['endDate']),
+      registrationOpenDate: _parseDateOrNull(
+        json['registration_open_date'] ?? json['registrationOpenDate'],
+      ),
+      registrationDeadline: _parseDate(
+        json['registration_deadline'] ?? json['registrationDeadline'],
+      ),
+      status: json['status']?.toString() ?? 'upcoming',
+      popularityScore: _parseInt(json['popularity_score'] ?? json['popularityScore']),
+      participantLimit: _parseInt(json['participant_limit'] ?? json['participantLimit']),
+      registeredCount: _parseInt(json['registered_count'] ?? json['registeredCount']),
+      featured: _parseBool(json['featured']),
+      bannerImage: _parseOptionalString(json['banner_image'] ?? json['bannerImage']),
+      categories: categories,
+      createdAt: _parseDate(json['created_at'] ?? json['createdAt']),
+      updatedAt: _parseDate(json['updated_at'] ?? json['updatedAt']),
     );
   }
 
@@ -158,66 +155,171 @@ class Event {
     };
   }
 
-  /// Check if registration is open
+  int? get durationDays {
+    if (endDate == null) {
+      return null;
+    }
+    final diff = endDate!.difference(startDate).inDays + 1;
+    return max(diff, 1);
+  }
+
+  String get formattedDateRange {
+    if (endDate == null || _isSameDay(startDate, endDate!)) {
+      return _formatDate(startDate);
+    }
+    return '${_formatDate(startDate)} - ${_formatDate(endDate!)}';
+  }
+
+  double get capacityRatio {
+    if (participantLimit <= 0) {
+      return 0;
+    }
+    final ratio = (registeredCount / participantLimit) * 100;
+    if (ratio.isNaN || ratio.isInfinite) {
+      return 0;
+    }
+    return ratio.clamp(0, 100).toDouble();
+  }
+
+  int? get remainingSlots {
+    if (participantLimit <= 0) {
+      return null;
+    }
+    final remaining = participantLimit - registeredCount;
+    return remaining < 0 ? 0 : remaining;
+  }
+
   bool get isRegistrationOpen {
+    if (status == 'completed') {
+      return false;
+    }
     final now = DateTime.now();
     final openDate = registrationOpenDate ?? now;
-    final hasCapacity = participantLimit == 0 || registeredCount < participantLimit;
-    return openDate.isBefore(now) &&
-           now.isBefore(registrationDeadline) &&
-           status != 'completed' &&
-           hasCapacity;
-  }
-
-  /// Get capacity ratio (0-100)
-  double get capacityRatio {
-    if (participantLimit == 0) return 0;
-    return (registeredCount / participantLimit).clamp(0.0, 1.0) * 100;
-  }
-
-  /// Get remaining slots
-  int? get remainingSlots {
-    if (participantLimit == 0) return null;
-    return participantLimit - registeredCount;
-  }
-
-  /// Get specific registration status message
-  String get registrationStatusMessage {
-    if (status == 'completed') {
-      return 'This event has been completed.';
-    }
-    if (DateTime.now().isAfter(registrationDeadline)) {
-      return 'Registration deadline has passed.';
-    }
-    if (registrationOpenDate != null && DateTime.now().isBefore(registrationOpenDate!)) {
-      return 'Registration opens on ${registrationOpenDate!.month}/${registrationOpenDate!.day}/${registrationOpenDate!.year}.';
+    final isAfterOpen = openDate.isBefore(now) || _isSameDay(openDate, now);
+    final isBeforeClose =
+        registrationDeadline.isAfter(now) || _isSameDay(registrationDeadline, now);
+    if (!isAfterOpen || !isBeforeClose) {
+      return false;
     }
     if (participantLimit > 0 && registeredCount >= participantLimit) {
-      return 'This event is fully booked.';
+      return false;
     }
-    if (isRegistrationOpen) {
-      return 'Registration is open. Secure your bib today!';
-    }
-    return 'Registration is currently closed.';
+    return true;
   }
 
-  /// Get duration in days
-  int? get durationDays {
-    if (endDate == null) return null;
-    return endDate!.difference(startDate).inDays + 1;
+  String get registrationStatusMessage {
+    if (status == 'completed') {
+      return 'Event completed';
+    }
+    if (participantLimit > 0 && registeredCount >= participantLimit) {
+      return 'Registration full';
+    }
+    final now = DateTime.now();
+    if (registrationOpenDate != null && now.isBefore(registrationOpenDate!)) {
+      return 'Registration opens on ${_formatDate(registrationOpenDate!)}';
+    }
+    if (now.isAfter(registrationDeadline)) {
+      return 'Registration closed';
+    }
+    return 'Registration open';
   }
 
-  /// Formatted date range
-  String get formattedDateRange {
-    final formatter = DateFormat('MMM dd, yyyy');
-    if (endDate == null) {
-      return formatter.format(startDate);
+  String get statusDisplay {
+    switch (status) {
+      case 'upcoming':
+        return 'Upcoming';
+      case 'ongoing':
+        return 'Ongoing';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
     }
-    return '${formatter.format(startDate)} - ${formatter.format(endDate!)}';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is Event && other.id == id && other.slug == slug;
+  }
+
+  @override
+  int get hashCode => Object.hash(id, slug);
+
+  static String? _parseOptionalString(dynamic value) {
+    final raw = value?.toString();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return raw;
+  }
+
+  static int _parseInt(dynamic value, {int fallback = 0}) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
+  }
+
+  static bool _parseBool(dynamic value) {
+    if (value is bool) {
+      return value;
+    }
+    if (value is int) {
+      return value != 0;
+    }
+    final normalized = value?.toString().toLowerCase();
+    return normalized == 'true' || normalized == '1';
+  }
+
+  static DateTime _parseDate(dynamic value) {
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    if (value is String && value.isNotEmpty) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {}
+    }
+    return DateTime.now();
+  }
+
+  static DateTime? _parseDateOrNull(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is DateTime) {
+      return value;
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    if (value is String && value.isNotEmpty) {
+      try {
+        return DateTime.parse(value);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  static String _formatDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '$month/$day/${date.year}';
   }
 }
 
-/// Pagination info for events list
 class EventPagination {
   final int page;
   final int pages;
@@ -233,33 +335,93 @@ class EventPagination {
     required this.total,
   });
 
-  factory EventPagination.fromJson(Map<String, dynamic> json) {
+  factory EventPagination.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return EventPagination(
+        page: 1,
+        pages: 1,
+        hasNext: false,
+        hasPrevious: false,
+        total: 0,
+      );
+    }
     return EventPagination(
-      page: json['page'],
-      pages: json['pages'],
-      hasNext: json['has_next'],
-      hasPrevious: json['has_previous'],
-      total: json['total'],
+      page: _parseInt(json['page'], fallback: 1),
+      pages: _parseInt(json['pages'], fallback: 1),
+      hasNext: json['has_next'] == true || json['hasNext'] == true,
+      hasPrevious: json['has_previous'] == true || json['hasPrevious'] == true,
+      total: _parseInt(json['total'], fallback: 0),
     );
+  }
+
+  static int _parseInt(dynamic value, {int fallback = 0}) {
+    if (value is int) {
+      return value;
+    }
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 }
 
-/// Response for events API
 class EventsResponse {
   final List<Event> events;
   final EventPagination pagination;
 
-  EventsResponse({
-    required this.events,
-    required this.pagination,
-  });
+  EventsResponse({required this.events, required this.pagination});
 
-  factory EventsResponse.fromJson(Map<String, dynamic> json) {
+  factory EventsResponse.fromJson(dynamic json) {
+    if (json is List) {
+      final events = json
+          .whereType<Map<String, dynamic>>()
+          .map(Event.fromJson)
+          .toList();
+      return EventsResponse(
+        events: events,
+        pagination: EventPagination(
+          page: 1,
+          pages: 1,
+          hasNext: false,
+          hasPrevious: false,
+          total: events.length,
+        ),
+      );
+    }
+
+    if (json is Map<String, dynamic>) {
+      final rawResults = json['results'] ?? json['events'] ?? [];
+      final events = <Event>[];
+      if (rawResults is List) {
+        for (final item in rawResults) {
+          if (item is Map<String, dynamic>) {
+            events.add(Event.fromJson(item));
+          }
+        }
+      }
+      final pagination = json['pagination'] is Map<String, dynamic>
+          ? EventPagination.fromJson(json['pagination'] as Map<String, dynamic>)
+          : EventPagination(
+              page: 1,
+              pages: 1,
+              hasNext: false,
+              hasPrevious: false,
+              total: events.length,
+            );
+
+      return EventsResponse(events: events, pagination: pagination);
+    }
+
     return EventsResponse(
-      events: (json['results'] as List)
-          .map((event) => Event.fromJson(event))
-          .toList(),
-      pagination: EventPagination.fromJson(json['pagination']),
+      events: [],
+      pagination: EventPagination(
+        page: 1,
+        pages: 1,
+        hasNext: false,
+        hasPrevious: false,
+        total: 0,
+      ),
     );
   }
+}
+
+extension IterableFirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }

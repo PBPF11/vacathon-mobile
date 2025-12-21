@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/auth_provider.dart';
+import '../models/models.dart';
 import '../services/api_service.dart';
 
 // CSS Variables from reference
@@ -28,6 +30,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _activeEvents = 0;
   int _completedEvents = 0;
   List<_ParticipantSummary> _participantSummary = [];
+  Map<String, dynamic>? _stats;
+  bool _isLoading = true;
 
   @override
   void initState() {
