@@ -374,7 +374,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.2, delay: 60.ms),
                               const SizedBox(height: 20),
-                              _buildQuickNav(isAdmin, authProvider)
+                              _buildQuickNav(isAdmin)
                                   .animate()
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.15, delay: 100.ms),
