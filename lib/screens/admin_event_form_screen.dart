@@ -230,7 +230,7 @@ class _AdminEventFormContentState extends State<AdminEventFormContent> {
           await ApiService.instance.updateEventWithImage(
             widget.event!.id,
             payload,
-            _selectedImage!,
+            _selectedImage,
           );
         } else {
           await ApiService.instance.updateEventAdmin(widget.event!.id, payload);

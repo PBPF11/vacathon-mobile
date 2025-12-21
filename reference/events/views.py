@@ -51,9 +51,6 @@ def events_json(request):
 
     events_payload = []
     for event in page_obj.object_list:
-        banner_image = event.banner_image
-        if banner_image and not banner_image.startswith(("http://", "https://")):
-            banner_image = request.build_absolute_uri(banner_image)
         events_payload.append(
             {
                 "id": event.id,
@@ -70,7 +67,7 @@ def events_json(request):
                 "registration_deadline": event.registration_deadline.isoformat(),
                 "is_registration_open": event.is_registration_open,
                 "popularity_score": event.popularity_score,
-                "banner_image": banner_image,
+                "banner_image": event.banner_image,
                 "participant_limit": event.participant_limit,
                 "registered_count": event.registered_count,
                 "categories": [
