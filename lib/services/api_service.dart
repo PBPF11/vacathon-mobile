@@ -543,7 +543,9 @@ class ApiService {
 
   Future<UserProfile?> tryGetProfile() async {
     if (DummyDataService.USE_DUMMY_DATA) {
-      return getProfile();
+      // When using dummy data, force the app to go through the login flow
+      // instead of auto-authenticating on startup.
+      return null;
     }
     try {
       final data = await request.get('$baseUrl/profile/api/profile/');
