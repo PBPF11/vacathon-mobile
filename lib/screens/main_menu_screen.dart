@@ -374,7 +374,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.2, delay: 60.ms),
                               const SizedBox(height: 20),
-                              _buildQuickNav(isAdmin)
+                              _buildQuickNav(isAdmin, authProvider)
                                   .animate()
                                   .fadeIn(duration: 350.ms)
                                   .slideY(begin: 0.15, delay: 100.ms),
@@ -1143,6 +1143,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   Widget _buildQuickNav(bool isAdmin) {
+    Future<void> _handleLogout() async {
+      await Provider.of<AuthProvider>(context, listen: false).logout();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    }
+
     return _buildSurfaceCard(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -1197,6 +1204,11 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     label: 'Notifikasi',
                     icon: Icons.notifications,
                     onTap: () => widget.onNavigate(4),
+                  ),
+                  _buildNavCard(
+                    label: 'Logout',
+                    icon: Icons.logout,
+                    onTap: _handleLogout,
                   ),
                   if (isAdmin)
                     _buildNavCard(
