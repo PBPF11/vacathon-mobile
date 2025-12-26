@@ -22,11 +22,16 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void initState() {
     super.initState();
+    _registerViewFactory();
+  }
+
+  void _registerViewFactory() {
     // Register the HTML view for the map
+    final viewType = 'map-view-${widget.mapUrl?.hashCode ?? 'default'}';
     ui_web.platformViewRegistry.registerViewFactory(
-      'map-view-${widget.mapUrl?.hashCode ?? 'default'}',
+      viewType,
       (int viewId) => html.IFrameElement()
-        ..src = widget.mapUrl ?? 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.816666!3d-6.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMDAuMCJTIDEwNsKwNDknMDAuMCJF!5e0!3m2!1sen!2sid!4v1638360000000!5m2!1sen!2sid'
+        ..src = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.816666!3d-6.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMDAuMCJTIDEwNsKwNDknMDAuMCJF!5e0!3m2!1sen!2sid!4v1638360000000!5m2!1sen!2sid'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%',
@@ -34,7 +39,16 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   @override
+  void didUpdateWidget(MapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mapUrl != widget.mapUrl) {
+      _registerViewFactory();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final viewType = 'map-view-${widget.mapUrl?.hashCode ?? 'default'}';
     return Container(
       height: 200,
       decoration: BoxDecoration(
@@ -44,7 +58,7 @@ class _MapWidgetState extends State<MapWidget> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: HtmlElementView(
-          viewType: 'map-view-${widget.mapUrl?.hashCode ?? 'default'}',
+          viewType: viewType,
         ),
       ),
     );

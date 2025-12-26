@@ -12,7 +12,7 @@ class ApiService {
   // HP Fisik: Pakai IP Laptop (misal 'http://192.168.1.xxx:8000')
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'https://muhammad-rafi419-vacathon.pbp.cs.ui.ac.id/',
+    defaultValue: 'https://muhammad-rafi419-vacathon.pbp.cs.ui.ac.id',
   );
 
   // Singleton instance
