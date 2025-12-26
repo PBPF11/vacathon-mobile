@@ -5,8 +5,7 @@ import '../services/api_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
+import '../widgets/map_widget.dart';
 import 'package:flutter/foundation.dart';
 
 // CSS Variables from reference
@@ -38,15 +37,6 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 1, vsync: this);
-    // Register the HTML view for the map
-    ui_web.platformViewRegistry.registerViewFactory(
-      'map-view',
-      (int viewId) => html.IFrameElement()
-        ..src = _eventDetail?.mapUrl ?? 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.816666!3d-6.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMDAuMCJTIDEwNsKwNDknMDAuMCJF!5e0!3m2!1sen!2sid!4v1638360000000!5m2!1sen!2sid'
-        ..style.border = 'none'
-        ..style.width = '100%'
-        ..style.height = '100%',
-    );
     _bootstrap();
   }
 
@@ -488,52 +478,10 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
           const SizedBox(height: 16),
 
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.grey[200],
-            ),
-            child: kIsWeb
-                ? HtmlElementView(viewType: 'map-view')
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.map, size: 48, color: primaryColor),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${widget.event.city}, ${widget.event.country}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ElevatedButton(
-                          onPressed: () async {
-                            // Open Google Maps directions
-                            final url =
-                                'https://www.google.com/maps/dir/?api=1&destination=${widget.event.city}+${widget.event.country}';
-                            print('[ACTION] Open Google Maps: $url');
-                            if (await canLaunchUrl(Uri.parse(url))) {
-                              await launchUrl(Uri.parse(url));
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Could not open Google Maps'),
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                          ),
-                          child: const Text('Get Directions'),
-                        ),
-                      ],
-                    ),
-                  ),
+          MapWidget(
+            mapUrl: _eventDetail?.mapUrl,
+            city: widget.event.city,
+            country: widget.event.country,
           ),
 
           const SizedBox(height: 24),
