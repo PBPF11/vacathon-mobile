@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import 'create_event_screen.dart';
 
 // CSS Variables from reference
 const Color primaryColor = Color(0xFF177FDA);
@@ -78,6 +79,17 @@ class _AdminEventManagementScreenState extends State<AdminEventManagementScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to delete event: $e')),
       );
+    }
+  }
+
+  Future<void> _createEvent() async {
+    final result = await Navigator.push<Event>(
+      context,
+      MaterialPageRoute(builder: (context) => const CreateEventScreen()),
+    );
+    if (result != null) {
+      // Event created successfully, reload events
+      _loadEvents();
     }
   }
 
