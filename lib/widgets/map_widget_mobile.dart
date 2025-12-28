@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class MapWidget extends StatefulWidget {
+class MapWidget extends StatelessWidget {
   final String? mapUrl;
   final String city;
   final String country;
@@ -15,61 +14,36 @@ class MapWidget extends StatefulWidget {
   });
 
   @override
-  State<MapWidget> createState() => _MapWidgetState();
-}
-
-class _MapWidgetState extends State<MapWidget> {
-  late GoogleMapController _mapController;
-
-  // Default location (Jakarta, Indonesia) - can be improved to parse from mapUrl
-  static const LatLng _defaultLocation = LatLng(-6.2088, 106.8456);
-
-  @override
   Widget build(BuildContext context) {
     return Container(
-      height: 250, // Increased height to accommodate button
+      height: 200,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.grey[200],
       ),
-      child: Column(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: GoogleMap(
-                initialCameraPosition: const CameraPosition(
-                  target: _defaultLocation,
-                  zoom: 10,
-                ),
-                markers: {
-                  Marker(
-                    markerId: const MarkerId('event_location'),
-                    position: _defaultLocation,
-                    infoWindow: InfoWindow(
-                      title: '${widget.city}, ${widget.country}',
-                    ),
-                  ),
-                },
-                onMapCreated: (controller) {
-                  _mapController = controller;
-                },
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.map, size: 48, color: const Color(0xFF177FDA)),
+            const SizedBox(height: 8),
+            Text(
+              '$city, $country',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
+            const SizedBox(height: 8),
+            ElevatedButton(
               onPressed: () async {
                 // Open Google Maps directions
                 final url =
-                    'https://www.google.com/maps/dir/?api=1&destination=${widget.city}+${widget.country}';
+                    'https://www.google.com/maps/dir/?api=1&destination=$city+$country';
                 if (await canLaunchUrl(Uri.parse(url))) {
                   await launchUrl(Uri.parse(url));
                 } else {
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Could not open Google Maps'),
@@ -79,13 +53,12 @@ class _MapWidgetState extends State<MapWidget> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF177FDA), // primaryColor
-                minimumSize: const Size(double.infinity, 36),
+                backgroundColor: const Color(0xFF177FDA),
               ),
               child: const Text('Get Directions'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

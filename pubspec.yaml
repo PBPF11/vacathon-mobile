@@ -61,7 +61,7 @@ dependencies:
   url_launcher: ^6.3.0
 
   # Google Maps for embedded maps
-  google_maps_flutter: ^2.10.0
+  google_maps_flutter: ^2.14.0
   google_maps_flutter_web: ^0.5.10
 
 dev_dependencies:
