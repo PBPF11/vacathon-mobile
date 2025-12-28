@@ -39,7 +39,7 @@ class UserRaceHistory {
             title: json['event'], // Nama event dari JSON
             slug: json['event_slug'] ?? '',
             description: '',
-            city: json['city'] ?? '', // Ambil city dari level history jika ada
+            cities: [json['city'] ?? ''], // Ambil city dari level history jika ada
             country: json['country'] ?? '',
             startDate: json['registration_date'] != null
                 ? DateTime.parse(json['registration_date'])

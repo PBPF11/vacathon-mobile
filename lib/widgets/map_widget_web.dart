@@ -1,16 +1,18 @@
-import 'dart:html' as html;
-import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:ui_web' as ui_web;
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 class MapWidget extends StatefulWidget {
   final String? mapUrl;
-  final String city;
+  final List<String> cities;
   final String country;
 
   const MapWidget({
     super.key,
     this.mapUrl,
-    required this.city,
+    required this.cities,
     required this.country,
   });
 
@@ -22,16 +24,16 @@ class _MapWidgetState extends State<MapWidget> {
   @override
   void initState() {
     super.initState();
-    _registerViewFactory();
-  }
-
-  void _registerViewFactory() {
     // Register the HTML view for the map
-    final viewType = 'map-view-${widget.mapUrl?.hashCode ?? 'default'}';
+    final viewType = 'map-view-${widget.cities.hashCode}-${widget.country.hashCode}';
+    final locations = widget.cities.map((c) => '$c, ${widget.country}').join('/');
+    final src = widget.cities.length == 1
+        ? 'https://maps.google.com/maps?q=${Uri.encodeComponent(locations)}&output=embed'
+        : 'https://maps.google.com/maps/dir/$locations&output=embed';
     ui_web.platformViewRegistry.registerViewFactory(
       viewType,
       (int viewId) => html.IFrameElement()
-        ..src = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.521260322283!2d106.816666!3d-6.2!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMTInMDAuMCJTIDEwNsKwNDknMDAuMCJF!5e0!3m2!1sen!2sid!4v1638360000000!5m2!1sen!2sid'
+        ..src = src
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%',
@@ -39,27 +41,17 @@ class _MapWidgetState extends State<MapWidget> {
   }
 
   @override
-  void didUpdateWidget(MapWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.mapUrl != widget.mapUrl) {
-      _registerViewFactory();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final viewType = 'map-view-${widget.mapUrl?.hashCode ?? 'default'}';
+    final viewType = 'map-view-${widget.cities.hashCode}-${widget.country.hashCode}';
     return Container(
-      height: 200,
+      height: 300,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         color: Colors.grey[200],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: HtmlElementView(
-          viewType: viewType,
-        ),
+        child: HtmlElementView(viewType: viewType),
       ),
     );
   }

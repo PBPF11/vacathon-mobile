@@ -14,7 +14,7 @@ class DummyDataService {
       slug: 'jakarta-marathon-2024',
       description:
           'Experience the vibrant city of Jakarta through this challenging marathon route featuring iconic landmarks and urban landscapes.',
-      city: 'Jakarta',
+      cities: ['Jakarta'],
       country: 'Indonesia',
       venue: 'National Monument',
       startDate: DateTime(2025, 11, 15),
@@ -63,7 +63,7 @@ class DummyDataService {
       slug: 'bali-marathon-2024',
       description:
           'Run through the paradise island of Bali with stunning beach views and tropical landscapes.',
-      city: 'Bali',
+      cities: ['Bali'],
       country: 'Indonesia',
       venue: 'Sanur Beach',
       startDate: DateTime(2025, 12, 8),
@@ -106,7 +106,7 @@ class DummyDataService {
       slug: 'bandung-trail-2024',
       description:
           'Challenge yourself with this scenic trail run through the mountains of Bandung.',
-      city: 'Bandung',
+      cities: ['Bandung'],
       country: 'Indonesia',
       venue: 'Dago Pakar',
       startDate: DateTime(2025, 10, 20),
@@ -149,7 +149,7 @@ class DummyDataService {
       slug: 'surabaya-night-run-2023',
       description:
           'Experience the magic of Surabaya at night with this illuminated city marathon.',
-      city: 'Surabaya',
+      cities: ['Surabaya'],
       country: 'Indonesia',
       venue: 'Tugu Pahlawan',
       startDate: DateTime(2023, 12, 15),
@@ -830,7 +830,7 @@ class DummyDataService {
       title: eventData['title'] ?? 'New Event',
       slug: eventData['slug'] ?? 'new-event-${newId}',
       description: eventData['description'] ?? '',
-      city: eventData['city'] ?? '',
+      cities: eventData['cities'] != null ? List<String>.from(eventData['cities']) : [eventData['city'] ?? ''],
       country: eventData['country'] ?? 'Indonesia',
       venue: eventData['venue'] ?? '',
       startDate: DateTime.parse(
@@ -881,7 +881,7 @@ class DummyDataService {
       title: eventData['title'] ?? existingEvent.title,
       slug: eventData['slug'] ?? existingEvent.slug,
       description: eventData['description'] ?? existingEvent.description,
-      city: eventData['city'] ?? existingEvent.city,
+      cities: eventData['cities'] != null ? List<String>.from(eventData['cities']) : (eventData['city'] != null ? [eventData['city']] : existingEvent.cities),
       country: eventData['country'] ?? existingEvent.country,
       venue: eventData['venue'] ?? existingEvent.venue,
       startDate: eventData['start_date'] != null
@@ -979,7 +979,7 @@ class DummyDataService {
         title: event.title,
         slug: event.slug,
         description: event.description,
-        city: event.city,
+        cities: event.cities,
         country: event.country,
         venue: event.venue,
         startDate: event.startDate,

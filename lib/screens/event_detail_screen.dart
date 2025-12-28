@@ -480,7 +480,7 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
           MapWidget(
             mapUrl: _eventDetail?.mapUrl,
-            city: widget.event.city,
+            cities: widget.event.cities,
             country: widget.event.country,
           ),
 
@@ -804,7 +804,13 @@ class _EventDetailScreenState extends State<EventDetailScreen>
   void _showRegistrationDialog() {
     showDialog(
       context: context,
-      builder: (context) => RegistrationDialog(event: widget.event),
+      builder: (context) => RegistrationDialog(
+        event: widget.event,
+        onSuccess: () async {
+          await _loadEventDetail();
+          await _checkRegistrationStatus();
+        },
+      ),
     );
   }
 
@@ -830,8 +836,9 @@ class _EventDetailScreenState extends State<EventDetailScreen>
 
 class RegistrationDialog extends StatefulWidget {
   final Event event;
+  final VoidCallback? onSuccess;
 
-  const RegistrationDialog({super.key, required this.event});
+  const RegistrationDialog({super.key, required this.event, this.onSuccess});
 
   @override
   State<RegistrationDialog> createState() => _RegistrationDialogState();
@@ -938,6 +945,8 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
             backgroundColor: Colors.green,
           ),
         );
+        // Refresh event details and registration status
+        widget.onSuccess?.call();
       }
     } catch (e) {
       print('[ERROR] Registration failed: $e');

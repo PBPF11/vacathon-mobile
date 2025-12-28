@@ -51,7 +51,7 @@ class Event {
   final String title;
   final String slug;
   final String description;
-  final String city;
+  final List<String> cities;
   final String country;
   final String? venue;
   final DateTime startDate;
@@ -73,7 +73,7 @@ class Event {
     required this.title,
     required this.slug,
     required this.description,
-    required this.city,
+    required this.cities,
     required this.country,
     this.venue,
     required this.startDate,
@@ -102,12 +102,27 @@ class Event {
       }
     }
 
+    final cities = <String>[];
+    final rawCities = json['cities'];
+    if (rawCities is List) {
+      for (final item in rawCities) {
+        if (item is String && item.isNotEmpty) {
+          cities.add(item);
+        }
+      }
+    } else if (json['city'] != null) {
+      final city = json['city']?.toString();
+      if (city != null && city.isNotEmpty) {
+        cities.add(city);
+      }
+    }
+
     return Event(
       id: _parseInt(json['id']),
       title: json['title']?.toString() ?? '',
       slug: json['slug']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      city: json['city']?.toString() ?? '',
+      cities: cities,
       country: json['country']?.toString() ?? '',
       venue: _parseOptionalString(json['venue']),
       startDate: _parseDate(json['start_date'] ?? json['startDate']),
@@ -136,7 +151,8 @@ class Event {
       'title': title,
       'slug': slug,
       'description': description,
-      'city': city,
+      'cities': cities,
+      'city': city, // for backward compatibility
       'country': country,
       'venue': venue,
       'start_date': startDate.toIso8601String(),
@@ -223,6 +239,8 @@ class Event {
     }
     return 'Registration open';
   }
+
+  String get city => cities.isNotEmpty ? cities.first : '';
 
   String get statusDisplay {
     switch (status) {

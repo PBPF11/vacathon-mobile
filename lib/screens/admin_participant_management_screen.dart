@@ -40,7 +40,7 @@ class _AdminParticipantManagementScreenState extends State<AdminParticipantManag
               title: 'Jakarta Marathon 2024',
               slug: 'jakarta-marathon-2024',
               description: 'Test event',
-              city: 'Jakarta',
+              cities: ['Jakarta'],
               country: 'Indonesia',
               startDate: DateTime(2025, 1, 1),
               registrationDeadline: DateTime(2025, 12, 31),

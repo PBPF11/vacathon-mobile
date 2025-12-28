@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -37,7 +38,7 @@ class _EventsScreenState extends State<EventsScreen> {
   String _searchQuery = '';
   String? _selectedStatus;
   String? _selectedCity;
-  double? _selectedDistance;
+  RangeValues? _selectedDistanceRange;
 
   List<String> _availableCities = [];
   List<double> _availableDistances = [];
@@ -82,8 +83,9 @@ class _EventsScreenState extends State<EventsScreen> {
     if (_selectedCity != null && _selectedCity!.isNotEmpty) {
       filters['city'] = _selectedCity!;
     }
-    if (_selectedDistance != null) {
-      filters['distance'] = _selectedDistance!.toString();
+    if (_selectedDistanceRange != null) {
+      filters['distance_min'] = _selectedDistanceRange!.start.toString();
+      filters['distance_max'] = _selectedDistanceRange!.end.toString();
     }
     return filters;
   }
@@ -146,6 +148,14 @@ class _EventsScreenState extends State<EventsScreen> {
         if (updatedEvents.isNotEmpty) {
           _availableCities = updatedCities;
           _availableDistances = updatedDistances;
+          // Reset distance range if it's no longer valid
+          if (_selectedDistanceRange != null) {
+            final newMin = updatedDistances.isNotEmpty ? updatedDistances.reduce((a, b) => a < b ? a : b) : 0.0;
+            final newMax = updatedDistances.isNotEmpty ? updatedDistances.reduce((a, b) => a > b ? a : b) : 100.0;
+            if (_selectedDistanceRange!.start < newMin || _selectedDistanceRange!.end > newMax) {
+              _selectedDistanceRange = null;
+            }
+          }
         }
       });
     } catch (e) {
@@ -200,18 +210,46 @@ class _EventsScreenState extends State<EventsScreen> {
       _searchQuery = '';
       _selectedStatus = null;
       _selectedCity = null;
-      _selectedDistance = null;
+      _selectedDistanceRange = null;
     });
     _loadEvents(reset: true);
   }
 
-  List<String> _getCityOptions() {
-    if (DummyDataService.USE_DUMMY_DATA) {
-      final cities = DummyDataService.getUniqueCities();
-      cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-      return cities;
+  int _countSyllables(String word) {
+    word = word.toLowerCase();
+    int count = 0;
+    bool prevVowel = false;
+    for (int i = 0; i < word.length; i++) {
+      bool isVowel = 'aeiouy'.contains(word[i]);
+      if (isVowel && !prevVowel) {
+        count++;
+      }
+      prevVowel = isVowel;
     }
-    return _availableCities;
+    // Handle silent 'e'
+    if (word.endsWith('e') && count > 1) {
+      count--;
+    }
+    return count > 0 ? count : 1; // At least 1 syllable
+  }
+
+  List<String> _getCityOptions() {
+    List<String> cities;
+    if (DummyDataService.USE_DUMMY_DATA) {
+      cities = DummyDataService.getUniqueCities();
+    } else {
+      cities = _availableCities;
+    }
+
+    // Filter cities with max 3 syllables
+    cities = cities.where((city) => _countSyllables(city) <= 3).toList();
+
+    // Remove cities that might be confused with event names
+    final eventTitles = _events.map((e) => e.title.toLowerCase()).toSet();
+    cities = cities.where((city) => !eventTitles.contains(city.toLowerCase())).toList();
+
+    cities.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return cities;
   }
 
   List<double> _getDistanceOptions() {
@@ -264,8 +302,9 @@ class _EventsScreenState extends State<EventsScreen> {
         _statusOptions.contains(_selectedStatus) ? _selectedStatus : null;
     final selectedCity =
         cities.contains(_selectedCity) ? _selectedCity : null;
-    final selectedDistance =
-        distances.contains(_selectedDistance) ? _selectedDistance : null;
+    final minDistance = distances.isNotEmpty ? distances.reduce((a, b) => a < b ? a : b) : 0.0;
+    final maxDistance = distances.isNotEmpty ? distances.reduce((a, b) => a > b ? a : b) : 100.0;
+    final selectedDistanceRange = _selectedDistanceRange ?? RangeValues(minDistance, maxDistance);
 
     return Container(
       color: whiteColor,
@@ -377,37 +416,52 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
               ),
               SizedBox(
-                width: 170,
-                child: DropdownButtonFormField<double?>(
-                  value: selectedDistance,
-                  decoration: InputDecoration(
-                    labelText: 'Distance',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                  ),
-                  items: [
-                    const DropdownMenuItem<double?>(
-                      value: null,
-                      child: Text('All distances'),
-                    ),
-                    ...distances.map(
-                      (distance) => DropdownMenuItem<double?>(
-                        value: distance,
-                        child: Text('${distance.toStringAsFixed(1)} km'),
+                width: 200,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Distance Range',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    RangeSlider(
+                      values: selectedDistanceRange,
+                      min: minDistance,
+                      max: maxDistance,
+                      divisions: maxDistance > minDistance ? max(1, ((maxDistance - minDistance) / 5).round()) : null,
+                      labels: RangeLabels(
+                        '${selectedDistanceRange.start.toStringAsFixed(1)} km',
+                        '${selectedDistanceRange.end.toStringAsFixed(1)} km',
+                      ),
+                      onChanged: (RangeValues values) {
+                        setState(() {
+                          _selectedDistanceRange = values;
+                        });
+                        _debounce?.cancel();
+                        _debounce = Timer(const Duration(milliseconds: 500), () {
+                          _loadEvents(reset: true);
+                        });
+                      },
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${minDistance.toStringAsFixed(1)} km',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                        ),
+                        Text(
+                          '${maxDistance.toStringAsFixed(1)} km',
+                          style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                        ),
+                      ],
+                    ),
                   ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedDistance = value;
-                    });
-                    _loadEvents(reset: true);
-                  },
                 ),
               ),
               OutlinedButton.icon(
