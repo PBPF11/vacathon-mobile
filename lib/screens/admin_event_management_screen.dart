@@ -93,6 +93,17 @@ class _AdminEventManagementScreenState extends State<AdminEventManagementScreen>
     }
   }
 
+  Future<void> _editEvent(Event event) async {
+    final result = await Navigator.push<Event>(
+      context,
+      MaterialPageRoute(builder: (context) => CreateEventScreen(event: event)),
+    );
+    if (result != null) {
+      // Event updated successfully, reload events
+      _loadEvents();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,12 +114,7 @@ class _AdminEventManagementScreenState extends State<AdminEventManagementScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // TODO: Navigate to create event screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Create event feature coming soon')),
-              );
-            },
+            onPressed: _createEvent,
           ),
         ],
       ),
@@ -213,12 +219,7 @@ class _AdminEventManagementScreenState extends State<AdminEventManagementScreen>
                                 ),
                                 const Spacer(),
                                 TextButton(
-                                  onPressed: () {
-                                    // TODO: Navigate to edit event
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Edit "${event.title}" coming soon')),
-                                    );
-                                  },
+                                  onPressed: () => _editEvent(event),
                                   child: const Text('Edit'),
                                 ),
                                 const SizedBox(width: 8),
